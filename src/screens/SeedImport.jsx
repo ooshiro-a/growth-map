@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useApp } from '../app-context.js';
 import { ConfirmDialog } from '../components/Modal.jsx';
 import { ENV_LABEL } from '../config.js';
-import { parseSeed, seedAlreadyImported, seedDrafts, seedSummary } from '../lib/seed.js';
+import { parseSeed, seedAlreadyImported, seedDrafts, seedSamples, seedSummary } from '../lib/seed.js';
 
 // 設定＞初回の取り込み：初期データ（成長の地図・ホーム）の JSON を貼る／ファイルを選ぶ → 確かめる → 登録する
+// 取り込みは1回だけ。シートを読み終えた最新の状態でだけ登録できる（古い控えのまま二重に入れないように）
 export function SeedImport() {
-  const { model, write, readOnly, env } = useApp();
+  const { model, write, readOnly, env, st, year } = useApp();
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [confirm, setConfirm] = useState(false);
@@ -14,7 +15,7 @@ export function SeedImport() {
 
   const check = (t) => {
     setDone(null);
-    setResult(parseSeed(t));
+    setResult(parseSeed(t, { currentYear: year }));
   };
   const onFile = async (e) => {
     const f = e.target.files && e.target.files[0];
@@ -26,10 +27,13 @@ export function SeedImport() {
   };
 
   const seed = result && result.ok ? result.seed : null;
-  const already = seed ? seedAlreadyImported(model.records, seed.year) : false;
+  const already = seedAlreadyImported(model.records);
+  const fresh = st.phase === 'ready' && !st.refreshing && st.cachedAt == null && !st.error;
   const drafts = seed ? seedDrafts(seed) : [];
 
   const register = () => {
+    // 押した時にもう一度確かめる（確認の小窓を開いている間に読み込みが終わった時など）
+    if (!fresh || seedAlreadyImported(model.records)) return false;
     const rows = write(seedDrafts(seed));
     if (!rows) return false;
     setDone(rows.length);
@@ -37,6 +41,15 @@ export function SeedImport() {
     setResult(null);
     return true;
   };
+
+  if (already && done == null) {
+    return (
+      <div className="seed-import">
+        <b className="sub-h">初期データ（成長の地図・ホーム）</b>
+        <p className="note">初期データは取り込み済みです（取り込みは1回だけ）。直す時は各画面の「…」から</p>
+      </div>
+    );
+  }
 
   return (
     <div className="seed-import">
@@ -88,13 +101,21 @@ export function SeedImport() {
               ))}
             </tbody>
           </table>
-          {already ? (
-            <p className="err">{seed.year}年の初期データは、もう取り込んであります（二重には入れません）</p>
-          ) : (
-            <button type="button" className="btn primary" disabled={readOnly} onClick={() => setConfirm(true)}>
-              登録する（{drafts.length}行・{ENV_LABEL[env]}）
-            </button>
-          )}
+          <p className="note">中身の例（文字化けしていないか確かめてください）</p>
+          <table className="summary">
+            <tbody>
+              {seedSamples(seed).map(([k, list]) => (
+                <tr key={k}>
+                  <th>{k}</th>
+                  <td>{list.join('／')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!fresh && <p className="err">シートを読み込み終えてから登録できます（通信できない時は、つながってから）</p>}
+          <button type="button" className="btn primary" disabled={readOnly || !fresh} onClick={() => setConfirm(true)}>
+            登録する（{drafts.length}行・{ENV_LABEL[env]}）
+          </button>
         </div>
       )}
 

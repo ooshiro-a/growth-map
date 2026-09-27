@@ -15,14 +15,22 @@ const MOTIVE_KEYS = ['score', 'items'];
 const ICEBERG_LAYERS = [LAYER.SKILL, LAYER.PLUS, LAYER.MINUS, LAYER.MIND];
 
 // JSON の文字 → { ok, seed, errors[] }
-export function parseSeed(text) {
+// currentYear を渡すと、年は「去年か今年」だけにする（打ち間違いで先の年に入らないように）
+export function parseSeed(text, { currentYear = null } = {}) {
+  const raw = String(text || '').replace(/^﻿/, '');
+  if (raw.includes('�')) {
+    return { ok: false, errors: ['文字化けしています。UTF-8 で保存したファイルを選んでください'] };
+  }
   let data;
   try {
-    data = JSON.parse(String(text || '').replace(/^﻿/, ''));
+    data = JSON.parse(raw);
   } catch {
     return { ok: false, errors: ['JSON として読めません（貼り付けが途中で切れていないか確かめてください）'] };
   }
   const errors = validateSeed(data);
+  if (!errors.length && currentYear != null && (data.year < currentYear - 1 || data.year > currentYear)) {
+    errors.push(`year は ${currentYear - 1} か ${currentYear} にしてください（今は${currentYear}年）`);
+  }
   return errors.length ? { ok: false, errors } : { ok: true, seed: data };
 }
 
@@ -153,9 +161,22 @@ export function seedSummary(seed) {
   ];
 }
 
-// 同じ年の初期データがもう入っているか（未保存の行も含めて見る）
-export function seedAlreadyImported(records, year) {
-  return records.some(
-    (r) => r.extra && r.extra.source === 'seed' && (r.year === year || (r.kind === KIND.PRINCIPLE && r.year == null)),
-  );
+// 初期データがもう入っているか（年を問わず1回だけ。未保存の行も含めて見る）
+// 別の年の分を足すと、引き継ぎと重なって言葉が2つずつになるため
+export function seedAlreadyImported(records) {
+  return records.some((r) => r.extra && r.extra.source === 'seed');
+}
+
+// 見せる例（各項目の最初の数件。文字化けや取り違えに気づけるように）
+export function seedSamples(seed, n = 2) {
+  const pick = (list) => (list || []).slice(0, n).map((x) => (typeof x === 'string' ? x : x.text));
+  const motives = seed.motives || {};
+  return [
+    ['今年の目標', pick(seed.goals)],
+    ['指標', pick(seed.principles)],
+    ['アイスバーグ', pick(seed.iceberg)],
+    ['自分軸・理念', pick(seed.axis)],
+    ['動機', pick(MOTIVE_QUADRANTS.flatMap((q) => (motives[q] && motives[q].items) || []))],
+    ['ブレーキ', pick(seed.brakes)],
+  ].filter(([, list]) => list.length);
 }

@@ -96,4 +96,26 @@ describe('初期データの取り込み', () => {
   it('先頭の BOM があっても読める', () => {
     expect(parseSeed(`﻿${JSON.stringify(SEED)}`).ok).toBe(true);
   });
+
+  it('文字化け（UTF-8 でないファイル）は断る', () => {
+    const p = parseSeed(JSON.stringify({ ...SEED, goals: ['���'] }));
+    expect(p.ok).toBe(false);
+    expect(p.errors[0]).toMatch(/UTF-8/);
+  });
+
+  it('年は去年か今年だけ（先の年への打ち間違いを止める）', () => {
+    expect(parseSeed(JSON.stringify(SEED), { currentYear: 2026 }).ok).toBe(true);
+    expect(parseSeed(JSON.stringify(SEED), { currentYear: 2027 }).ok).toBe(true);
+    expect(parseSeed(JSON.stringify({ ...SEED, year: 2027 }), { currentYear: 2026 }).errors[0]).toMatch(/2025 か 2026/);
+    expect(parseSeed(JSON.stringify(SEED), { currentYear: 2028 }).ok).toBe(false);
+  });
+
+  it('取り込みは年を問わず1回だけ（別の年の分を足すと引き継ぎと重なるため）', () => {
+    const rows = asRows(seedDrafts({ ...SEED, principles: [] }, makeId));
+    const m = buildModel(rows, [], { currentYear: 2026 });
+    expect(seedAlreadyImported(m.records)).toBe(true);
+    // 未保存の行だけでも止める
+    const pending = buildModel([], rows.slice(0, 1), { currentYear: 2026 });
+    expect(seedAlreadyImported(pending.records)).toBe(true);
+  });
 });
