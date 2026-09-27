@@ -1,0 +1,38 @@
+# ------------------------------------------------------------
+# 公開リポジトリ：合言葉・個人の記録・旧マインドマップの中身・本の図の写真は入れない
+# 参考資料と個人データは reference/ に置く（このフォルダごと除外）
+# ------------------------------------------------------------
+reference/
+
+# reference/ の外に置いてしまった時の保険（旧マップ・見本・本の図の写真など）
+seed*.json
+*numbered*.json
+*outline-backup*
+成長の地図_要件定義.md
+life-mindmap*
+mockup*.html
+*.heic
+*.HEIC
+*.jpg
+*.jpeg
+*.JPG
+*.png
+*.PNG
+*.pdf
+# アイコンなど、公開してよい画像を足す時は「!public/icon.png」のように1つずつ許可する
+
+# 接続先URLなど（見本は .env.example）
+.env
+.env.*
+!.env.example
+*.local
+
+# 組み立て・依存
+node_modules/
+dist/
+coverage/
+
+# エディタ・OS
+.claude/settings.local.json
+.DS_Store
+Thumbs.db

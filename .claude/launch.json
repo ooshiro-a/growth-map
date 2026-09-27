@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mock-gas",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/mock-gas.js"],
+      "port": 8787
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173,
+      "url": "http://localhost:5173"
+    },
+    {
+      "name": "dev-lan",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:lan"],
+      "port": 5173,
+      "url": "http://localhost:5173"
+    }
+  ]
+}
