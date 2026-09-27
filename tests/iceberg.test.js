@@ -1,7 +1,7 @@
 // アイスバーグ：言葉の置き場所・大きさ・引き継ぎ（試験の言葉は作り物）
 import { beforeEach, describe, expect, it } from 'vitest';
 import { buildModel } from '../src/lib/fold.js';
-import { FIT, ICEBERG_LAYERS, icebergYear, layoutIceberg, shortLabel } from '../src/lib/iceberg.js';
+import { FIT, HIDE_RANK, ICEBERG_LAYERS, estimateWidth, icebergYear, layoutIceberg, shortLabel, tryLayout } from '../src/lib/iceberg.js';
 import { r, resetNo } from './helpers.js';
 
 beforeEach(resetNo);
@@ -46,6 +46,15 @@ function checkInside(L) {
   }
 }
 
+// 「ほかN語」は、その層の言葉の後ろ（同じ行なら右、でなければ下の行）
+function chipsLast(L) {
+  for (const c of L.chips) {
+    for (const w of L.words.filter((x) => x.layer === c.layer)) {
+      expect(c.y > w.y || (c.y === w.y && c.x > w.x)).toBe(true);
+    }
+  }
+}
+
 describe('図に出す短い言葉', () => {
   it('「（」より前だけ。長ければ8文字ぶんで「…」', () => {
     expect(shortLabel('朝に歩く（週3回）')).toBe('朝に歩く');
@@ -79,14 +88,53 @@ describe('言葉の置き場所', () => {
     expect(L.hidden.length).toBeGreaterThan(0);
     expect(L.chips.length).toBeGreaterThan(0);
     checkInside(L);
-    // 定着の言葉を隠す前に、目指すの言葉はすべて隠れている
-    const all = Object.values(spec.layers).flat();
+    // 同じ層で、定着の言葉が隠れている時は、目指すの言葉も隠れている
     const hidden = new Set(L.hidden);
-    const hidStage3 = all.some((w) => hidden.has(w.id) && w.stage === '3');
-    const shownStage1 = all.some((w) => !hidden.has(w.id) && w.stage === '1');
-    expect(hidStage3 && shownStage1).toBe(false);
+    for (const list of Object.values(spec.layers)) {
+      const hidStage3 = list.some((w) => hidden.has(w.id) && w.stage === '3');
+      const shownStage1 = list.some((w) => !hidden.has(w.id) && w.stage === '1');
+      expect(hidStage3 && shownStage1).toBe(false);
+    }
+    chipsLast(L);
     // ほかN語の数と隠した数が合う
     expect(L.chips.reduce((n, c) => n + c.count, 0)).toBe(L.hidden.length);
+  });
+
+  it('まとめなくても入る言葉は戻す（あふれていない層はまとめない。同じ層では大事な方から）', () => {
+    // 意識だけが多い時：能力・スキルと«マイナス»の言葉はまとめない（まとめても意識の言葉が増えないため）
+    const one = specOf({ skill: many('能', 3, (i) => i + 1), plus: many('プ', 3, (i) => i + 1), minus: many('マ', 2), mind: many('意', 80, () => 3) });
+    const L1 = layoutIceberg({ width: 343, spec: one });
+    expect(L1.hidden.filter((id) => id.startsWith('意')).length).toBeGreaterThan(0);
+    expect(L1.hidden.some((id) => id.startsWith('能') || id.startsWith('マ'))).toBe(false);
+    checkInside(L1);
+    chipsLast(L1);
+    // «プラス»の列があふれる時に、言葉の多いほかの層の「目指す」を必要以上にまとめない
+    for (const width of [288, 343, 382]) {
+      const spec = specOf({
+        skill: many('能', 16, () => 1),
+        plus: many('プ', 18, () => 1),
+        minus: many('マ', 5),
+        mind: many('意', 30, () => 1),
+      });
+      const L = layoutIceberg({ width, spec });
+      expect(L.hidden.length).toBeGreaterThan(0);
+      checkInside(L);
+      expect(L.chips.reduce((n, c) => n + c.count, 0)).toBe(L.hidden.length);
+      chipsLast(L);
+      // 各層で、隠れている中でいちばん大事な言葉は、戻すと入らない
+      const H1 = Math.round(width * FIT.phone.r1);
+      const font = FIT.phone.fonts[FIT.phone.fonts.length - 1];
+      for (const layer of ICEBERG_LAYERS) {
+        const hid = spec.layers[layer].filter((w) => L.hidden.includes(w.id));
+        if (!hid.length) continue;
+        const top = Math.max(...hid.map((w) => HIDE_RANK(w, layer)));
+        for (const w of hid.filter((x) => HIDE_RANK(x, layer) === top)) {
+          const less = new Set(L.hidden);
+          less.delete(w.id);
+          expect(tryLayout(width, H1, font, spec, estimateWidth, less)).toBeNull();
+        }
+      }
+    }
   });
 
   it('削除した言葉は先にまとめる', () => {

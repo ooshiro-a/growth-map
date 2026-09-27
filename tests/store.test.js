@@ -220,6 +220,20 @@ describe('保存の流れ', () => {
     expect(s.getState()).toMatchObject({ phase: 'needPass', error: null, pass: '' });
   });
 
+  it('空のシートでも、一度読めたら読み直しの間に「読み込み中」へ戻らない。読み直しの番号が進む', async () => {
+    const api = fakeApi();
+    const s = createStore({ env: 'test', url: 'u', storage: memoryStorage(), api });
+    s.setPass('ok');
+    await s.reload();
+    expect(s.getState()).toMatchObject({ phase: 'ready', rows: [] });
+    const mark = s.seq();
+    const p = s.reload();
+    expect(s.getState()).toMatchObject({ phase: 'ready', refreshing: true });
+    expect(s.getState().syncedSeq).toBeLessThanOrEqual(mark);
+    await p;
+    expect(s.getState().syncedSeq).toBeGreaterThan(mark);
+  });
+
   it('2つのタブ：片方の未保存を、もう片方が上書きで消さない', () => {
     const storage = memoryStorage();
     const offline = { readAll: async () => ({ ok: true, rows: [] }), append: async () => { throw new ApiError('network'); } };

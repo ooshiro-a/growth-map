@@ -134,7 +134,7 @@
   "principles": ["指標"],
   "iceberg": [
     {"layer": "skill", "text": "技術力", "stage": 2},
-    {"layer": "minus", "text": "言い訳する"}
+    {"layer": "minus", "text": "マイナスの例"}
   ],
   "axis": ["自分軸・理念"],
   "motives": {

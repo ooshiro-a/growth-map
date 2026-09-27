@@ -38,7 +38,8 @@ export function Modal({ title, onClose, children, footer, keep = false }) {
   useEffect(() => {
     const before = document.activeElement;
     const key = (e) => {
-      if (e.key === 'Escape') closeRef.current();
+      // 小窓の中の「…」の選択肢が開いていれば、先にそれだけ閉じる（MoreMenu が閉じる）
+      if (e.key === 'Escape' && !document.querySelector('[role="menu"]')) closeRef.current();
     };
     document.addEventListener('keydown', key);
     const el = ref.current;

@@ -134,14 +134,11 @@ function append_(rows, known) {
 
   // 先に形を確かめる（1行でもおかしければ全部断り、何行目かを返す）
   var clean = [];
-  var past = [];
   for (var i = 0; i < rows.length; i++) {
     var row = normalizeRow_(rows[i]);
     if (!row) return { ok: false, error: 'bad', row: i };
-    if (isPastYearRow_(row, serverYear, now)) past.push(i);
     clean.push(row);
   }
-  if (past.length) return { ok: false, error: 'year', serverYear: serverYear, rowsIndex: past };
 
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return { ok: false, error: 'busy' };
@@ -162,16 +159,20 @@ function append_(rows, known) {
       lastMs = Date.parse(cellText_(sheet.getRange(last, 1).getValue())) || 0;
     }
 
+    // もう入っている行（返事が届かずに送り直した行）は足さない。前の年の行を断るのは、新しい行だけ
     var out = [];
     var skipped = 0;
-    clean.forEach(function (row) {
+    var past = [];
+    clean.forEach(function (row, i) {
       if (existing[row[2]]) {
         skipped++;
         return;
       }
+      if (isPastYearRow_(row, serverYear, now)) past.push(i);
       existing[row[2]] = true;
       out.push(row);
     });
+    if (past.length) return { ok: false, error: 'year', serverYear: serverYear, rowsIndex: past };
 
     if (out.length) {
       // 記録日時は鍵の中で付ける（前の行より必ず後）

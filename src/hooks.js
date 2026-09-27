@@ -66,22 +66,3 @@ export function useHashRoute(fallback = 'home') {
   };
   return [route, go];
 }
-
-// 外側を押した時・Esc で閉じる
-export function useDismiss(open, ref, onClose) {
-  useEffect(() => {
-    if (!open) return undefined;
-    const down = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    const key = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('pointerdown', down);
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('pointerdown', down);
-      document.removeEventListener('keydown', key);
-    };
-  }, [open, ref, onClose]);
-}

@@ -6,6 +6,8 @@
 // - 層の高さは中身に合わせて変わる
 // - 入らなければ図の高さを伸ばす（スマホ：幅の1.55倍→1.85倍）→ 文字を小さくする → 「ほかN語」にまとめる
 //   まとめる順：削除した言葉 → 目指す → «マイナス» → 実践中 → 定着（言葉の多い層から、後ろの言葉から）
+//   まとめた後、まとめなくても入る言葉は戻す（あふれていない層の言葉は出す。同じ層の中では上の順を守る）
+//   「ほかN語」は、その層の言葉の後ろに置く
 import { KIND, LAYER, OP, SCORED_LAYERS } from './schema.js';
 
 export const ICEBERG_LAYERS = [LAYER.SKILL, LAYER.PLUS, LAYER.MINUS, LAYER.MIND];
@@ -102,6 +104,7 @@ function geom(W, H) {
 }
 
 // 1行ずつ詰める。items: [{key, w}]（並び順）。行ごとに [{item}] と y を返す
+// 「ほかN語」は言葉を全部置いた後（最後の行の空き、なければ次の行）
 function flow(items, y0, widthAt, fitAt, lh, limit) {
   let y = y0;
   let rest = items.slice();
@@ -110,7 +113,9 @@ function flow(items, y0, widthAt, fitAt, lh, limit) {
   while (rest.length) {
     if (++guard > 500 || y > limit) return { lines, end: Infinity };
     const avail = widthAt(y);
-    const minW = Math.min(...rest.map((r) => r.w));
+    const words = rest.filter((r) => !r.chip);
+    const pool = words.length ? words : rest;
+    const minW = Math.min(...pool.map((r) => r.w));
     if (minW > avail) {
       const ny = fitAt(minW);
       y = Math.max(y + 0.5, ny);
@@ -118,12 +123,16 @@ function flow(items, y0, widthAt, fitAt, lh, limit) {
     }
     const line = [];
     let used = 0;
-    for (const r of rest) {
-      if (used + r.w <= avail) {
-        line.push(r);
-        used += r.w;
+    const put = (list) => {
+      for (const r of list) {
+        if (used + r.w <= avail) {
+          line.push(r);
+          used += r.w;
+        }
       }
-    }
+    };
+    put(pool);
+    if (pool === words && words.every((r) => line.includes(r))) put(rest.filter((r) => r.chip));
     rest = rest.filter((r) => !line.includes(r));
     lines.push({ y, items: line, used });
     y += lh;
@@ -140,8 +149,8 @@ function closeGaps(lines, lh) {
   return lines.map((ln, i) => ({ ...ln, y: end - (n - i) * lh }));
 }
 
-// 決まった高さ H・文字の大きさ font で並べてみる
-function tryLayout(W, H, font, spec, measure, hidden) {
+// 決まった高さ H・文字の大きさ font で並べてみる（入らなければ null）
+export function tryLayout(W, H, font, spec, measure, hidden) {
   const g = geom(W, H);
   const lh = font * LINE;
   const small = font - 1;
@@ -258,7 +267,7 @@ function tryLayout(W, H, font, spec, measure, hidden) {
 }
 
 // 「ほかN語」にまとめる言葉を1つ選ぶ
-const HIDE_RANK = (w, layer) => {
+export const HIDE_RANK = (w, layer) => {
   if (w.deleted) return 0;
   if (layer === LAYER.MINUS) return 2;
   const s = Number(w.stage);
@@ -280,6 +289,17 @@ function pickToHide(spec, hidden) {
   }
   return best ? best.id : null;
 }
+const rankOf = (spec) => {
+  const rank = new Map();
+  const layerOf = new Map();
+  for (const layer of ICEBERG_LAYERS) {
+    for (const w of spec.layers[layer] || []) {
+      rank.set(w.id, HIDE_RANK(w, layer));
+      layerOf.set(w.id, layer);
+    }
+  }
+  return { rank, layerOf };
+};
 
 // spec: { tip, titles: {skill, beh, mind}, pm: [左, 右], layers: {skill: [{id, label, stage, deleted}], ...} }
 export function layoutIceberg({ width, spec, measure = estimateWidth, fit = FIT.phone }) {
@@ -299,26 +319,45 @@ export function layoutIceberg({ width, spec, measure = estimateWidth, fit = FIT.
   // 3. 「ほかN語」にまとめる（いちばん小さい文字・いちばん高い図で入るまで）
   const font = fit.fonts[fit.fonts.length - 1];
   const hidden = new Set();
+  const order = [];
+  const inOrder = (x) => ({ ...x, hidden: order.filter((id) => hidden.has(id)) }); // まとめた順に並べる
   let L = null;
   for (;;) {
     const id = pickToHide(spec, hidden);
     if (!id) break;
     hidden.add(id);
+    order.push(id);
     L = tryLayout(W, H1, font, spec, measure, hidden);
     if (L) break;
   }
   if (L) {
+    // まとめなくても入る言葉は戻す（あふれていない層の言葉までまとめたままにしない）
+    // 戻す順は大事な方から（まとめた順の逆）。同じ層で戻せない言葉が残ったら、それより大事でない言葉は戻さない
+    const { rank, layerOf } = rankOf(spec);
+    const blocked = new Map();
+    for (let i = order.length - 1; i >= 0; i--) {
+      const id = order[i];
+      const layer = layerOf.get(id);
+      if (rank.get(id) < (blocked.get(layer) ?? -Infinity)) continue;
+      hidden.delete(id);
+      const back = tryLayout(W, H1, font, spec, measure, hidden);
+      if (back) L = back;
+      else {
+        hidden.add(id);
+        blocked.set(layer, Math.max(blocked.get(layer) ?? -Infinity, rank.get(id)));
+      }
+    }
     // 入った中でいちばん低い図にする
     for (let H = H0; H < H1; H += step) {
       const lower = tryLayout(W, H, font, spec, measure, hidden);
-      if (lower) return lower;
+      if (lower) return inOrder(lower);
     }
-    return L;
+    return inOrder(L);
   }
   // 4. それでも入らない時（見出しだけで溢れる細い幅など）：入るまで高さを伸ばす
   for (let H = H1; H <= W * 6; H += step * 4) {
     const last = tryLayout(W, H, font, spec, measure, hidden);
-    if (last) return last;
+    if (last) return inOrder(last);
   }
   return null;
 }

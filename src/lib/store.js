@@ -71,6 +71,7 @@ export function createStore({
     error: null,
     notice: null,
     serverYear: null,
+    syncedSeq: 0, // シートの全部をそろえられた、いちばん新しい読み込み・送信の番号（store.seq() と比べる）
   };
   const listeners = new Set();
   const set = (patch) => {
@@ -83,6 +84,7 @@ export function createStore({
   let retryCount = 0;
   let lockedTimer = null;
   let gen = 0; // 送れた回数（読み込みと送信が重なったかを見分ける）
+  let reqSeq = 0; // 読み込み・送信を始めた回数
   let disposed = false;
 
   const hasData = () => state.rows.length > 0 || !!state.cachedAt;
@@ -175,7 +177,9 @@ export function createStore({
       return;
     }
     const startGen = gen;
-    set({ phase: hasData() ? 'ready' : 'loading', refreshing: true, error: null });
+    const my = ++reqSeq;
+    // 一度読めていれば（シートが空でも）画面はそのまま。「読み込み中」は最初の1回だけ
+    set({ phase: hasData() || state.phase === 'ready' ? 'ready' : 'loading', refreshing: true, error: null });
     try {
       const res = await api.readAll(state.url, state.pass);
       if (disposed) return;
@@ -184,7 +188,7 @@ export function createStore({
       const rows = gen !== startGen || flushing ? mergeByNo(snap, state.rows) : snap;
       // 止まっていた知らせは、読めたら消す
       const notice = state.notice === ERROR_TEXT.locked ? null : state.notice;
-      set({ rows, cachedAt: null, phase: 'ready', refreshing: false, error: null, notice, serverYear: res.serverYear ?? null });
+      set({ rows, cachedAt: null, phase: 'ready', refreshing: false, error: null, notice, serverYear: res.serverYear ?? null, syncedSeq: Math.max(state.syncedSeq, my) });
       saveCache();
     } catch (e) {
       if (!disposed) handleError(e, 'load');
@@ -202,6 +206,7 @@ export function createStore({
     flushing = true;
     set({ saving: true });
     const batch = state.pending.slice(0, BATCH);
+    const my = ++reqSeq;
     let again = false;
     try {
       const known = state.rows.length;
@@ -224,7 +229,7 @@ export function createStore({
       );
       gen++;
       retryCount = 0;
-      set({ rows, pending, cachedAt: null, error: null, serverYear: res.serverYear ?? state.serverYear });
+      set({ rows, pending, cachedAt: null, error: null, serverYear: res.serverYear ?? state.serverYear, syncedSeq: gap ? state.syncedSeq : Math.max(state.syncedSeq, my) });
       saveCache();
       again = pending.length > 0;
       if (gap) setTimer(() => reload(), 0);
@@ -289,6 +294,7 @@ export function createStore({
 
   return {
     getState: () => state,
+    seq: () => reqSeq,
     subscribe: (fn) => {
       listeners.add(fn);
       return () => listeners.delete(fn);

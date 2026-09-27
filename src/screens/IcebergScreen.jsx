@@ -133,7 +133,19 @@ export function IcebergScreen({ year, viewOnly = false }) {
         </HeaderActions>
       )}
 
-      <div className={`size rv${showSize ? ' show' : ''}`} onClick={() => setShowSize((s) => !s)}>
+      <div
+        className={`size rv${showSize ? ' show' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={showSize}
+        onClick={() => setShowSize((s) => !s)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setShowSize((s) => !s);
+          }
+        }}
+      >
         <span className="k">大きさ</span>
         <b>{data.size}点</b>
         {delta != null && (

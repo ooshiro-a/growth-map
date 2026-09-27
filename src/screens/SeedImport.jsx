@@ -5,17 +5,24 @@ import { ENV_LABEL } from '../config.js';
 import { parseSeed, seedAlreadyImported, seedDrafts, seedSamples, seedSummary } from '../lib/seed.js';
 
 // 設定＞初回の取り込み：初期データ（成長の地図・ホーム）の JSON を貼る／ファイルを選ぶ → 確かめる → 登録する
-// 取り込みは1回だけ。シートを読み終えた最新の状態でだけ登録できる（古い控えのまま二重に入れないように）
+// 取り込みは1回だけ。「確かめる」を押した後にシートを読み直し、その最新の状態でだけ登録できる
+// （古い控えや、前に開いたままの画面から二重に入れないように）
 export function SeedImport() {
-  const { model, write, readOnly, env, st, year } = useApp();
+  const { store, model, write, readOnly, env, st, year } = useApp();
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState(null);
+  const [mark, setMark] = useState(null); // 確かめた時の読み込みの番号
 
   const check = (t) => {
     setDone(null);
-    setResult(parseSeed(t, { currentYear: year }));
+    const r = parseSeed(t, { currentYear: year });
+    setResult(r);
+    if (r.ok) {
+      setMark(store.seq());
+      store.reload();
+    }
   };
   const onFile = async (e) => {
     const f = e.target.files && e.target.files[0];
@@ -28,12 +35,13 @@ export function SeedImport() {
 
   const seed = result && result.ok ? result.seed : null;
   const already = seedAlreadyImported(model.records);
-  const fresh = st.phase === 'ready' && !st.refreshing && st.cachedAt == null && !st.error;
+  const fresh = mark != null && st.syncedSeq > mark && st.phase === 'ready' && !st.refreshing && st.cachedAt == null && !st.error;
   const drafts = seed ? seedDrafts(seed) : [];
 
   const register = () => {
     // 押した時にもう一度確かめる（確認の小窓を開いている間に読み込みが終わった時など）
-    if (!fresh || seedAlreadyImported(model.records)) return false;
+    const now = store.getState();
+    if (!fresh || now.syncedSeq <= mark || now.refreshing || now.error || seedAlreadyImported(model.records)) return false;
     const rows = write(seedDrafts(seed));
     if (!rows) return false;
     setDone(rows.length);
@@ -112,7 +120,7 @@ export function SeedImport() {
               ))}
             </tbody>
           </table>
-          {!fresh && <p className="err">シートを読み込み終えてから登録できます（通信できない時は、つながってから）</p>}
+          {!fresh && <p className="err">シートを読み直しています。読み終えたら登録できます（通信できない時は、つながってから「確かめる」をもう一度）</p>}
           <button type="button" className="btn primary" disabled={readOnly || !fresh} onClick={() => setConfirm(true)}>
             登録する（{drafts.length}行・{ENV_LABEL[env]}）
           </button>

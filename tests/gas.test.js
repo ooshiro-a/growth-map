@@ -134,6 +134,19 @@ describe('GAS：行を足す', () => {
     expect(env.post({ action: 'append', pass: P, rows: [late], known: 1 }).error).toBe('year');
   });
 
+  it('入っている行を年明けの後に送り直しても year にしない（返事が届かなかった送り直し）', () => {
+    const env = makeEnv({ nowMs: Date.UTC(2026, 11, 31, 3, 0, 0) }); // 26年12月31日
+    const dec = row('rtest0001', { kind: 'アイスバーグ', year: '2026' });
+    expect(env.post({ action: 'append', pass: P, rows: [dec], known: 0 }).ok).toBe(true);
+    env.setClock(Date.UTC(2027, 0, 10, 0, 0, 0)); // 1月10日：猶予の後
+    const again = env.post({ action: 'append', pass: P, rows: [dec, row('rtest0002')], known: 0 });
+    expect(again).toMatchObject({ ok: true, appended: 1, skipped: 1 });
+    // 新しい前の年の行は、これまでどおり断る（何行目かは送った並びの番号）
+    const late = row('rtest0003', { kind: 'アイスバーグ', year: '2026' });
+    expect(env.post({ action: 'append', pass: P, rows: [dec, late], known: 2 })).toMatchObject({ ok: false, error: 'year', rowsIndex: [1] });
+    expect(env.data).toHaveLength(3);
+  });
+
   it('形のおかしい行は何行目かを返す', () => {
     const env = makeEnv();
     const res = env.post({ action: 'append', pass: P, rows: [row('rtest0001'), row('x')], known: 0 });

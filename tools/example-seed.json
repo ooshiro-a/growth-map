@@ -1,0 +1,30 @@
+{
+  "format": "growth-map-seed/1",
+  "year": 2026,
+  "goals": ["例の目標その一", "例の目標その二"],
+  "principles": ["例の指標"],
+  "iceberg": [
+    { "layer": "skill", "text": "例の技A", "stage": 3 },
+    { "layer": "skill", "text": "例の技B", "stage": 2 },
+    { "layer": "skill", "text": "例の技C", "stage": 1 },
+    { "layer": "plus", "text": "例の行いA", "stage": 3 },
+    { "layer": "plus", "text": "例の行いB", "stage": 2 },
+    { "layer": "plus", "text": "例の行いC（補足つき）", "stage": 1 },
+    { "layer": "minus", "text": "例のくせA" },
+    { "layer": "minus", "text": "例のくせB" },
+    { "layer": "mind", "text": "例の考えA", "stage": 3 },
+    { "layer": "mind", "text": "例の考えB", "stage": 2 },
+    { "layer": "mind", "text": "例のとても長い考えの言葉", "stage": 1 }
+  ],
+  "axis": ["例の軸"],
+  "motives": {
+    "selfVisible": { "score": 6, "items": ["例の動機A"] },
+    "otherVisible": { "score": null, "items": [] },
+    "selfInvisible": { "score": null, "items": ["例の動機B"] },
+    "otherInvisible": { "score": null, "items": [] }
+  },
+  "brakes": [
+    { "kind": "worry", "text": "例の悩み", "place": "road", "control": "can", "status": "facing" },
+    { "kind": "child", "text": "例の大きな子ども", "status": "facing" }
+  ]
+}

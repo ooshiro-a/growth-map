@@ -2,9 +2,11 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useMemo, useState } from 'react';
-import { AppContext } from '../src/app-context.js';
+import { AppContext, useStoreState } from '../src/app-context.js';
 import { ItemList } from '../src/components/ItemList.jsx';
 import { IcebergScreen } from '../src/screens/IcebergScreen.jsx';
+import { SeedImport } from '../src/screens/SeedImport.jsx';
+import { createStore } from '../src/lib/store.js';
 import { buildModel } from '../src/lib/fold.js';
 import { toRow } from '../src/lib/schema.js';
 
@@ -206,5 +208,92 @@ describe('アイスバーグの画面', () => {
     fireEvent.change(within(dialog).getByRole('textbox', { name: '言葉' }), { target: { value: '作り物の癖' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
     expect(log.at(-1)).toMatchObject({ layer: 'minus', value: '' });
+  });
+});
+
+// 初期データの取り込み：「確かめる」の後にシートを読み直し、その結果でだけ登録できる
+function SeedHarness({ store }) {
+  const st = useStoreState(store);
+  const pendingRows = useMemo(() => st.pending.map((p) => p.row), [st.pending]);
+  const model = useMemo(() => buildModel(st.rows, pendingRows, { currentYear: 2026 }), [st.rows, pendingRows]);
+  return (
+    <AppContext.Provider value={{ store, st, model, year: 2026, env: 'test', readOnly: false, write: (d) => store.add(d) }}>
+      <SeedImport />
+    </AppContext.Provider>
+  );
+}
+
+describe('初期データの取り込み（画面）', () => {
+  const SEED = JSON.stringify({ format: 'growth-map-seed/1', year: 2026, goals: ['作り物の目標'] });
+  const seedRow = toRow({ at: '2026-09-27T09:00:00.000+09:00', ver: 1, no: 'rseedother1', year: 2026, kind: '目標', id: 'nseedo1', op: '追加', text: '作り物の目標', extra: { source: 'seed' } });
+
+  function setup() {
+    const sheet = [];
+    let wait = null;
+    const api = {
+      readAll: async () => {
+        if (wait) await wait;
+        return { ok: true, rows: sheet.map((r) => r.slice()), count: sheet.length, serverYear: 2026 };
+      },
+      append: async (url, pass, rows, known) => {
+        const have = new Set(sheet.map((r) => r[2]));
+        for (const r of rows) if (!have.has(r[2])) sheet.push(r.slice());
+        return { ok: true, rows: sheet.slice(known), from: known, count: sheet.length, serverYear: 2026 };
+      },
+    };
+    const store = createStore({ env: 'test', url: 'u', storage: null, api, win: null });
+    store.setPass('ok');
+    // 次の読み込みを止めておき、返した関数で進める
+    const hold = () => {
+      let go;
+      wait = new Promise((r) => {
+        go = r;
+      });
+      return () => {
+        wait = null;
+        go();
+      };
+    };
+    return { store, sheet, hold };
+  }
+  const check = () => {
+    fireEvent.change(screen.getByRole('textbox', { name: '初期データの JSON' }), { target: { value: SEED } });
+    fireEvent.click(screen.getByRole('button', { name: '確かめる' }));
+  };
+
+  it('前に読んだままの画面では、別の端末の取り込みに気づいて登録させない', async () => {
+    const { store, sheet, hold } = setup();
+    await act(() => store.reload()); // この端末が読んだ後に…
+    sheet.push(seedRow); // …別の端末が取り込んだ
+    render(<SeedHarness store={store} />);
+    const release = hold();
+    check();
+    // 読み直している間は登録できない
+    expect(screen.getByRole('button', { name: /登録する/ }).disabled).toBe(true);
+    await act(async () => {
+      release();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(screen.getByText(/初期データは取り込み済みです/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /登録する/ })).toBeNull();
+  });
+
+  it('読み直して入っていなければ登録できる（1回だけ）', async () => {
+    const { store, sheet } = setup();
+    await act(() => store.reload());
+    render(<SeedHarness store={store} />);
+    await act(async () => {
+      check();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    const reg = screen.getByRole('button', { name: /登録する（1行・テスト用）/ });
+    expect(reg.disabled).toBe(false);
+    fireEvent.click(reg);
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '登録する' }));
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(sheet).toHaveLength(1);
+    expect(screen.getByText(/1行を足しました/)).toBeTruthy();
   });
 });

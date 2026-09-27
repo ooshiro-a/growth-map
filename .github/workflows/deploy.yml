@@ -25,6 +25,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: 接続先の変数を確かめる（空でも公開は続ける）
+        if: ${{ vars.GAS_URL == '' || vars.GAS_URL_TEST == '' }}
+        run: echo "::warning::GAS_URL か GAS_URL_TEST が未設定です。画面は「接続先が設定されていません」になります（変数を入れたら Deploy を Run workflow でやり直す）"
       - run: npm test
       - run: npm run build
         env:
