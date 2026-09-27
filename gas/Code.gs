@@ -143,10 +143,8 @@ function rowsBetween_(sheet, from, to) {
 
 function cellText_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, TZ, "yyyy-MM-dd'T'HH:mm:ss.SSS'+09:00'");
-  var s = v === null || v === undefined ? '' : String(v);
-  // 書く時に付けた先頭の ' を外す（シートが外していなければ）
-  if (s.length > 1 && s.charAt(0) === "'" && /^[=+\-@']/.test(s.charAt(1))) s = s.slice(1);
-  return s;
+  // 書く時に付けた先頭の ' は、シートが外して保存する（ここでは外さない）
+  return v === null || v === undefined ? '' : String(v);
 }
 
 // ------------------------------------------------------------ 行を足す
@@ -265,7 +263,7 @@ function inGrace_(now) {
   return md >= '0101' && md <= '0107';
 }
 
-// 数式などに化けないように先頭に ' を付ける（読む時に外す）
+// 数式などに化けないように先頭に ' を付ける（シートは ' を外して、残りを文字のまま保存する）
 function escapeCell_(s) {
   return /^[=+\-@']/.test(s) ? "'" + s : s;
 }

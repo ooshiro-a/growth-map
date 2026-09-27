@@ -13,17 +13,18 @@ function jstIso(d) {
   return `${t.getUTCFullYear()}-${p(t.getUTCMonth() + 1)}-${p(t.getUTCDate())}T${p(t.getUTCHours())}:${p(t.getUTCMinutes())}:${p(t.getUTCSeconds())}.${p(t.getUTCMilliseconds(), 3)}+09:00`;
 }
 
-export function makeGasSim({ pass = 'ひみつの合言葉', maxRows = 1000, nowMs = null, keepApostrophe = true } = {}) {
+export function makeGasSim({ pass = 'ひみつの合言葉', maxRows = 1000, nowMs = null } = {}) {
   const log = [];
   const data = [HEADER.slice()];
   let max = maxRows;
   let clock = nowMs;
   const cache = new Map();
   const props = new Map(pass ? [['PASSPHRASE', pass]] : []);
+  // 実物のシートと同じ：= で始まれば数式になり、先頭の ' は「文字として入れる印」として外れる
   const store = (v) => {
     const s = String(v);
     if (s.startsWith('=')) return '#数式になった';
-    if (!keepApostrophe && s.startsWith("'")) return s.slice(1);
+    if (s.startsWith("'")) return s.slice(1);
     return s;
   };
   const range = (row, col, nr, nc) => ({

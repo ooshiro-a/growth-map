@@ -11,7 +11,7 @@ import { KIND, LAYER, OP, SCHEMA_VERSION } from '../lib/schema.js';
 import { SeedImport } from './SeedImport.jsx';
 
 // 往復テストで送る文字（シートで数式・日付・数に化けないか）
-const TRICKY = ['=1+1', '+5', '-3', '@x', "'x", "'=x", '1/2', '12月6日', '001', 'TRUE', '1e3', '2026-12-06', '{"a":1}', '改行\nあり', '  前後の空白  '];
+const TRICKY = ['=1+1', '+5', '-3', '@x', "'x", "'=x", "''", "'", '1/2', '12月6日', '001', 'TRUE', '1e3', '2026-12-06', '{"a":1}', '改行\nあり', '  前後の空白  '];
 
 function RoundTrip() {
   const { st, write } = useApp();

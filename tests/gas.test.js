@@ -120,16 +120,13 @@ describe('GAS：行を足す', () => {
   });
 
   it('数式や数に化けない（往復して同じ文字）', () => {
-    for (const keepApostrophe of [true, false]) {
-      const env = makeEnv({ keepApostrophe });
-      const tricky = ['=1+1', '+5', '-3', '@x', "'x", "'=x", '1/2', '12月6日', '001', 'TRUE', '1e3', '2026-12-06', '{"a":1}'];
-      env.post({ action: 'append', pass: P, rows: tricky.map((t, i) => row(`rtrick${String(i).padStart(3, '0')}`, { text: t })), known: 0 });
-      const back = env.post({ action: 'readAll', pass: P }).rows.map((r) => r[9]);
-      expect(back).not.toContain('#数式になった');
-      if (keepApostrophe) expect(back).toEqual(tricky);
-      // シートが先頭の ' を外す場合、「'」＋記号で始まる文字だけは ' が消える（実物の往復テストで確かめる）
-      else expect(back.filter((t, i) => t !== tricky[i])).toEqual(['=x']);
-    }
+    // シートは先頭の ' を外して保存する（実物の往復テストで確かめた）
+    const env = makeEnv();
+    const tricky = ['=1+1', '+5', '-3', '@x', "'x", "'=x", "''", "'", '1/2', '12月6日', '001', 'TRUE', '1e3', '2026-12-06', '{"a":1}'];
+    env.post({ action: 'append', pass: P, rows: tricky.map((t, i) => row(`rtrick${String(i).padStart(3, '0')}`, { text: t })), known: 0 });
+    const back = env.post({ action: 'readAll', pass: P }).rows.map((r) => r[9]);
+    expect(back).not.toContain('#数式になった');
+    expect(back).toEqual(tricky);
   });
 
   it('シートの行が足りなければ増やしてから書く', () => {
