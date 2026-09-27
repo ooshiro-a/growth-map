@@ -132,7 +132,7 @@ export default function App() {
 
   const ctx = { store, st, model, year, env, readOnly, write, setEnv, setClock };
 
-  if (st.phase === 'needPass' || (st.phase === 'init' && !st.pass)) {
+  if (st.phase === 'needPass' || (st.phase === 'init' && !st.pass && !st.key)) {
     return (
       <PassphraseScreen
         env={env}

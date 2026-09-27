@@ -1,4 +1,4 @@
-// GAS との通信（読むのも書くのも POST。合言葉は本文に入れ、URL には載せない）
+// GAS との通信（読むのも書くのも POST。合言葉・端末の鍵は本文に入れ、URL には載せない）
 // Content-Type を text/plain にして事前確認（preflight）を起こさない。GAS の 302 はそのまま追う
 import { SCHEMA_VERSION } from './schema.js';
 
@@ -41,11 +41,14 @@ export async function callGas(url, body, { timeoutMs = 25000, fetchImpl } = {}) 
   }
 }
 
-export const readAll = (url, pass, opts) => callGas(url, { action: 'readAll', pass }, opts);
+// cred：{ key }（端末の鍵）か { pass }（合言葉）。合言葉で通ると、返事に key が入る
+const credBody = (cred) => (cred && cred.key ? { key: cred.key } : { pass: (cred && cred.pass) || '' });
+
+export const readAll = (url, cred, opts) => callGas(url, { action: 'readAll', ...credBody(cred) }, opts);
 
 // known＝画面が知っている行数。返事にはそれより後の行が全部入る
-export const append = (url, pass, rows, known, opts) =>
-  callGas(url, { action: 'append', pass, rows, known }, opts);
+export const append = (url, cred, rows, known, opts) =>
+  callGas(url, { action: 'append', ...credBody(cred), rows, known }, opts);
 
 export const ERROR_TEXT = {
   auth: '合言葉が違います',

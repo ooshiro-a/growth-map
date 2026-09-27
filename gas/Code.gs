@@ -7,7 +7,7 @@
  * することは2つだけ：「行を足す」「全部読む」。行の書き換え・削除はしない。
  *
  * スクリプトのプロパティ（プロジェクトの設定 → スクリプト プロパティ）
- *   PASSPHRASE          合言葉（必須。コードには書かない）
+ *   PASSPHRASE          合言葉（必須。コードには書かない。変えると、端末の鍵もすべて使えなくなる）
  *   MIN_CLIENT_VERSION  これより古い画面からの読み書きを断る（任意）
  *   BACKUP_FOLDER_ID    控えフォルダ（フェーズ9）
  *   NOTIFY_EMAIL        12月のお知らせの宛先（フェーズ9）
@@ -40,29 +40,53 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: 'bad' });
   }
-  var denied = checkPass_(req && req.pass);
-  if (denied) return json_({ ok: false, error: denied });
+  var auth = checkAuth_(req || {});
+  if (auth.denied) return json_({ ok: false, error: auth.denied });
 
   var minVer = Number(prop_('MIN_CLIENT_VERSION') || 0);
   if (Number(req.clientVersion || 0) < minVer) return json_({ ok: false, error: 'upgrade' });
 
   try {
-    if (req.action === 'readAll') return json_(readAll_());
-    if (req.action === 'append') return json_(append_(req.rows, req.known));
-    return json_({ ok: false, error: 'bad' });
+    var out;
+    if (req.action === 'readAll') out = readAll_();
+    else if (req.action === 'append') out = append_(req.rows, req.known);
+    else return json_({ ok: false, error: 'bad' });
+    // 合言葉で通った端末には鍵を渡す（次からは鍵で通る）
+    if (auth.newKey) out.key = auth.newKey;
+    return json_(out);
   } catch (err) {
     console.error(err && err.stack ? err.stack : err);
     return json_({ ok: false, error: (err && err.code) || 'server' });
   }
 }
 
-// ------------------------------------------------------------ 合言葉
+// ------------------------------------------------------------ 合言葉・端末の鍵
+// 合言葉を1回入れた端末には「鍵」を渡し、次からは鍵で通す。
+// 鍵で通る端末は、他の人が合言葉をわざと間違えて止めている間も使える（止めるのは合言葉の照合だけ）。
+// 鍵＝端末ごとの番号＋合言葉で作った署名。合言葉を変えると、すべての鍵が使えなくなる
 
-function checkPass_(given) {
+function checkAuth_(req) {
+  var pass = prop_('PASSPHRASE');
+  if (!pass) return { denied: 'setup' };
+  if (typeof req.key === 'string' && keyOk_(req.key, pass)) return {};
+  var denied = checkPass_(req.pass, pass);
+  if (denied) return { denied: denied };
+  return { newKey: makeKey_(Utilities.getUuid(), pass) };
+}
+
+function makeKey_(id, pass) {
+  return id + '.' + Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature('growth-map-key:' + id, pass));
+}
+
+function keyOk_(key, pass) {
+  var dot = key.lastIndexOf('.');
+  if (dot < 1 || key.length > 200) return false;
+  return sameText_(key, makeKey_(key.slice(0, dot), pass));
+}
+
+function checkPass_(given, pass) {
   var cache = CacheService.getScriptCache();
   if (cache.get('gm_locked')) return 'locked';
-  var pass = prop_('PASSPHRASE');
-  if (!pass) return 'setup';
   if (typeof given === 'string' && sameText_(given, pass)) {
     if (cache.get('gm_fails')) cache.remove('gm_fails');
     return null;

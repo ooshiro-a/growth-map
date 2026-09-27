@@ -197,7 +197,7 @@ export function Settings() {
       {confirm === 'forget' && (
         <ConfirmDialog
           title="合言葉を消す"
-          message="この端末に記憶した合言葉を消します。次に開いた時に入れ直します。"
+          message="この端末の記憶（合言葉で受け取った鍵）を消します。次に開いた時に合言葉を入れ直します。"
           okLabel="消す"
           warn
           onOk={() => store.forgetPass()}

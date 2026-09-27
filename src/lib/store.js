@@ -60,7 +60,8 @@ export function createStore({
   let state = {
     env,
     url,
-    pass: load('pass', ''),
+    pass: load('pass', ''), // 合言葉（鍵をもらうまでの間だけ持つ）
+    key: load('key', ''), // 端末の鍵（合言葉で通った時に GAS から受け取る）
     rows: (cache && Array.isArray(cache.rows) && cache.rows) || [],
     cachedAt: (cache && cache.savedAt) || null,
     pending: load('pending', []),
@@ -88,6 +89,15 @@ export function createStore({
   let disposed = false;
 
   const hasData = () => state.rows.length > 0 || !!state.cachedAt;
+  const hasCred = () => !!(state.key || state.pass);
+  const cred = () => ({ key: state.key, pass: state.pass });
+  // 鍵を受け取ったら、合言葉は端末に残さない
+  const takeKey = (res) => {
+    if (!res || typeof res.key !== 'string' || !res.key) return {};
+    save('key', res.key);
+    save('pass', '');
+    return { key: res.key, pass: '' };
+  };
   const saveCache = () => save('cache', { rows: state.rows, savedAt: nowFn() });
 
   // 他のタブが書いた未保存と合わせてから保存する（上書きで消さない）
@@ -116,7 +126,8 @@ export function createStore({
     const detail = (e && e.detail) || {};
     if (code === 'auth') {
       save('pass', '');
-      set({ pass: '', phase: 'needPass', error: code, refreshing: false });
+      save('key', '');
+      set({ pass: '', key: '', phase: 'needPass', error: code, refreshing: false });
       return;
     }
     if (code === 'locked') {
@@ -172,7 +183,7 @@ export function createStore({
       set({ phase: 'error', error: 'nourl' });
       return;
     }
-    if (!state.pass) {
+    if (!hasCred()) {
       set({ phase: 'needPass' });
       return;
     }
@@ -181,14 +192,14 @@ export function createStore({
     // 一度読めていれば（シートが空でも）画面はそのまま。「読み込み中」は最初の1回だけ
     set({ phase: hasData() || state.phase === 'ready' ? 'ready' : 'loading', refreshing: true, error: null });
     try {
-      const res = await api.readAll(state.url, state.pass);
+      const res = await api.readAll(state.url, cred());
       if (disposed) return;
       const snap = Array.isArray(res.rows) ? res.rows : [];
       // 読んでいる間に送れた行があれば、読んだ内容の後ろに残す
       const rows = gen !== startGen || flushing ? mergeByNo(snap, state.rows) : snap;
       // 止まっていた知らせは、読めたら消す
       const notice = state.notice === ERROR_TEXT.locked ? null : state.notice;
-      set({ rows, cachedAt: null, phase: 'ready', refreshing: false, error: null, notice, serverYear: res.serverYear ?? null, syncedSeq: Math.max(state.syncedSeq, my) });
+      set({ rows, cachedAt: null, phase: 'ready', refreshing: false, error: null, notice, serverYear: res.serverYear ?? null, syncedSeq: Math.max(state.syncedSeq, my), ...takeKey(res) });
       saveCache();
     } catch (e) {
       if (!disposed) handleError(e, 'load');
@@ -198,7 +209,7 @@ export function createStore({
   }
 
   async function flush() {
-    if (disposed || flushing || !state.pending.length || !state.pass || !state.url || state.phase === 'needPass') return;
+    if (disposed || flushing || !state.pending.length || !hasCred() || !state.url || state.phase === 'needPass') return;
     if (retryTimer) {
       clearTimer(retryTimer);
       retryTimer = null;
@@ -210,7 +221,7 @@ export function createStore({
     let again = false;
     try {
       const known = state.rows.length;
-      const res = await api.append(state.url, state.pass, batch.map((p) => p.row), known);
+      const res = await api.append(state.url, cred(), batch.map((p) => p.row), known);
       if (disposed) return;
       const tail = Array.isArray(res.rows) ? res.rows : [];
       const from = Number(res.from) || 0;
@@ -229,7 +240,7 @@ export function createStore({
       );
       gen++;
       retryCount = 0;
-      set({ rows, pending, cachedAt: null, error: null, serverYear: res.serverYear ?? state.serverYear, syncedSeq: gap ? state.syncedSeq : Math.max(state.syncedSeq, my) });
+      set({ rows, pending, cachedAt: null, error: null, serverYear: res.serverYear ?? state.serverYear, syncedSeq: gap ? state.syncedSeq : Math.max(state.syncedSeq, my), ...takeKey(res) });
       saveCache();
       again = pending.length > 0;
       if (gap) setTimer(() => reload(), 0);
@@ -257,15 +268,19 @@ export function createStore({
     return rows;
   }
 
+  // 合言葉を入れた：前の鍵は捨て、合言葉で通して新しい鍵を受け取る
   function setPass(p) {
     const pass = String(p || '');
     save('pass', pass);
-    set({ pass, error: null });
+    save('key', '');
+    set({ pass, key: '', error: null });
   }
 
+  // この端末の合言葉と鍵を消す
   function forgetPass() {
     save('pass', '');
-    set({ pass: '', phase: 'needPass', error: null });
+    save('key', '');
+    set({ pass: '', key: '', phase: 'needPass', error: null });
   }
 
   function discardFailed(no) {

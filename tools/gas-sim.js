@@ -1,5 +1,6 @@
 // gas/Code.gs を、Google のサービスの作り物（メモリの中のシート）の上で動かす
 // テストと、手元で画面を試す時の「作り物の GAS」（tools/mock-gas.js）で使う
+import { createHmac, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
@@ -98,6 +99,9 @@ export function makeGasSim({ pass = 'ひみつの合言葉', maxRows = 1000, now
     },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props.get(k) ?? null }) },
     Utilities: {
+      getUuid: () => randomUUID(),
+      computeHmacSha256Signature: (value, key) => [...createHmac('sha256', key).update(value, 'utf8').digest()],
+      base64EncodeWebSafe: (bytes) => Buffer.from(bytes).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
       formatDate: (d, tz, fmt) => {
         if (tz !== 'Asia/Tokyo') throw new Error(`時間帯が違う: ${tz}`);
         const iso = jstIso(d);

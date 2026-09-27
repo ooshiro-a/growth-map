@@ -49,6 +49,38 @@ describe('GAS：合言葉', () => {
     expect(res).toMatchObject({ ok: true, rows: [], count: 0, serverYear: 2026 });
   });
 
+  it('合言葉で通ると端末の鍵を渡す。鍵で通る時は新しい鍵を渡さない', () => {
+    const env = makeEnv();
+    const first = env.post({ action: 'readAll', pass: 'ひみつの合言葉' });
+    expect(first.key).toMatch(/^[0-9a-f-]{36}.[A-Za-z0-9_=-]+$/);
+    const byKey = env.post({ action: 'readAll', key: first.key });
+    expect(byKey.ok).toBe(true);
+    expect(byKey.key).toBeUndefined();
+    // 端末ごとに別の鍵
+    expect(env.post({ action: 'readAll', pass: 'ひみつの合言葉' }).key).not.toBe(first.key);
+  });
+
+  it('他の人が合言葉をわざと間違えて止めても、鍵のある端末は使える', () => {
+    const env = makeEnv();
+    const { key } = env.post({ action: 'readAll', pass: 'ひみつの合言葉' });
+    for (let i = 0; i < 10; i++) env.post({ action: 'readAll', pass: 'ちがう' });
+    expect(env.post({ action: 'readAll', pass: 'ひみつの合言葉' }).error).toBe('locked');
+    expect(env.post({ action: 'readAll', key }).ok).toBe(true);
+    expect(env.post({ action: 'append', key, rows: [row('rtest0001')], known: 0 }).ok).toBe(true);
+  });
+
+  it('作り変えた鍵・合言葉を変えた後の鍵は通らず、間違いとして数える', () => {
+    const env = makeEnv();
+    const { key } = env.post({ action: 'readAll', pass: 'ひみつの合言葉' });
+    const forged = key.slice(0, -2) + (key.at(-2) === 'A' ? 'B' : 'A') + key.slice(-1);
+    expect(env.post({ action: 'readAll', key: forged }).error).toBe('auth');
+    expect(env.post({ action: 'readAll', key: 'x'.repeat(300) }).error).toBe('auth');
+    expect(env.cache.get('gm_fails')).toBe('2');
+    env.props.set('PASSPHRASE', '新しい合言葉');
+    expect(env.post({ action: 'readAll', key }).error).toBe('auth');
+    expect(env.post({ action: 'readAll', pass: '新しい合言葉' }).ok).toBe(true);
+  });
+
   it('GET ではデータを返さない', () => {
     const env = makeEnv();
     expect(env.ctx.doGet().body).toEqual({ ok: true, app: 'growth-map' });

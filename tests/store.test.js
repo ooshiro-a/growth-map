@@ -13,26 +13,36 @@ function memoryStorage() {
 }
 
 // 作り物の GAS（行を持っていて、append は known より後の行を返す）
-function fakeApi({ fail } = {}) {
+// keys：合言葉 ok で通ったら鍵 key-ok を渡す（鍵 key-ok でも通る）
+function fakeApi({ fail, keys = false } = {}) {
   const sheet = [];
   const calls = [];
-  return {
+  const api = {
     sheet,
     calls,
-    readAll: vi.fn(async (url, pass) => {
+    creds: [],
+    readAll: vi.fn(async (url, cred) => {
       calls.push('readAll');
-      if (pass !== 'ok') throw new ApiError('auth');
-      return { ok: true, rows: sheet.map((r) => r.slice()), count: sheet.length, serverYear: 2026 };
+      const key = auth(cred);
+      return { ok: true, rows: sheet.map((r) => r.slice()), count: sheet.length, serverYear: 2026, ...key };
     }),
-    append: vi.fn(async (url, pass, rows, known) => {
+    append: vi.fn(async (url, cred, rows, known) => {
       calls.push('append');
       if (fail && fail.length) throw fail.shift();
+      const key = auth(cred);
       const have = new Set(sheet.map((r) => r[2]));
       for (const r of rows) if (!have.has(r[2])) sheet.push(r.slice());
       const from = known >= 0 && known <= sheet.length ? known : 0;
-      return { ok: true, rows: sheet.slice(from).map((r) => r.slice()), from, count: sheet.length, serverYear: 2026 };
+      return { ok: true, rows: sheet.slice(from).map((r) => r.slice()), from, count: sheet.length, serverYear: 2026, ...key };
     }),
   };
+  function auth(cred) {
+    api.creds.push({ ...cred });
+    if (keys && cred.key === 'key-ok') return {};
+    if (cred.key || cred.pass !== 'ok') throw new ApiError('auth');
+    return keys ? { key: 'key-ok' } : {};
+  }
+  return api;
 }
 
 const draft = (text) => ({ kind: '指標', id: 'nx' + text, op: '追加', text });
@@ -232,6 +242,41 @@ describe('保存の流れ', () => {
     expect(s.getState().syncedSeq).toBeLessThanOrEqual(mark);
     await p;
     expect(s.getState().syncedSeq).toBeGreaterThan(mark);
+  });
+
+  it('合言葉で通ったら鍵を受け取り、合言葉は端末に残さない。次からは鍵だけ送る', async () => {
+    const api = fakeApi({ keys: true });
+    const storage = memoryStorage();
+    const s = createStore({ env: 'test', url: 'u', storage, api });
+    s.setPass('ok');
+    await s.reload();
+    expect(s.getState()).toMatchObject({ phase: 'ready', key: 'key-ok', pass: '' });
+    expect(storage.getItem('gm.pass.test')).toBeNull();
+    expect(JSON.parse(storage.getItem('gm.key.test'))).toBe('key-ok');
+    s.add([draft('一')]);
+    await tick();
+    expect(api.sheet).toHaveLength(1);
+    expect(api.creds.slice(1)).toEqual([{ key: 'key-ok', pass: '' }]);
+    // 開き直しても鍵で読める
+    const again = createStore({ env: 'test', url: 'u', storage, api });
+    await again.reload();
+    expect(again.getState().phase).toBe('ready');
+  });
+
+  it('鍵が通らなくなったら（合言葉を変えた時）、鍵を消して合言葉を聞く。「合言葉を消す」でも鍵を消す', async () => {
+    const api = fakeApi({ keys: true });
+    const storage = memoryStorage();
+    storage.setItem('gm.key.test', JSON.stringify('key-old'));
+    const s = createStore({ env: 'test', url: 'u', storage, api });
+    await s.reload();
+    expect(s.getState()).toMatchObject({ phase: 'needPass', error: 'auth', key: '' });
+    expect(storage.getItem('gm.key.test')).toBeNull();
+    s.setPass('ok');
+    await s.reload();
+    expect(s.getState().key).toBe('key-ok');
+    s.forgetPass();
+    expect(s.getState()).toMatchObject({ phase: 'needPass', key: '', pass: '' });
+    expect(storage.getItem('gm.key.test')).toBeNull();
   });
 
   it('2つのタブ：片方の未保存を、もう片方が上書きで消さない', () => {

@@ -42,6 +42,7 @@
 - 画面：React 18 + Vite（`base: /growth-map/`）。GitHub Pages に GitHub Actions で自動公開（`.github/workflows/deploy.yml`）
 - 保存：GAS（`gas/Code.gs`、スプレッドシートに付いたスクリプト）＋ シート `records`
 - 合言葉：GAS のスクリプトのプロパティ `PASSPHRASE`。画面は POST の本文で送る（URL に載せない）。10回違えば30分止める
+  - 合言葉で通った端末には「端末の鍵」（番号＋合言葉で作った署名）を渡し、次からは鍵で通す。止まっている間も鍵は通る。合言葉を変えると全部の鍵が無効
 - 画面の場所はハッシュ（`#/map/iceberg` など）。サーバー側の設定は要らない
 
 ### シート `records` の列（変えない。変える時は「版」を上げる）
