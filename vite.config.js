@@ -11,6 +11,12 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
+  server: {
+    // 手元の画面（npm run dev:lan は同じ Wi-Fi にも見える）から、個人のデータや設定を出さない
+    fs: {
+      deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/reference/**', '**/seed*.json', '**/*numbered*.json', '**/*outline-backup*', '**/life-mindmap*', '**/mockup*.html'],
+    },
+  },
   test: {
     include: ['tests/**/*.test.{js,jsx}'],
     environment: 'node',

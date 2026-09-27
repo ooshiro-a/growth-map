@@ -1,6 +1,7 @@
 import { useApp } from '../app-context.js';
 import { ENV_LABEL } from '../config.js';
 import { ERROR_TEXT } from '../lib/api.js';
+import { ErrorBoundary } from './ErrorBoundary.jsx';
 
 export const TABS = [
   { key: 'home', label: 'ホーム', path: 'home' },
@@ -97,6 +98,7 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
           </div>
           <div className="bar-r">
             <SaveStatus />
+            <span id="bar-actions" className="bar-actions" />
             {actions}
             <button type="button" className="bar-link gear-top" onClick={() => go('settings')}>
               設定
@@ -120,7 +122,9 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
             ))}
           </nav>
         )}
-        <main className="body">{children}</main>
+        <main className="body">
+          <ErrorBoundary key={`${tab}/${sub || ''}`}>{children}</ErrorBoundary>
+        </main>
       </div>
 
       <nav className="nav" aria-label="画面の切り替え">

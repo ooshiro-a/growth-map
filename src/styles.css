@@ -635,6 +635,279 @@ button:disabled {
   margin-top: 14px;
 }
 
+/* ---------------------------------------------------------------- アイスバーグ */
+.bar-actions {
+  display: contents;
+}
+.bar-link.add {
+  color: var(--ink);
+  font-weight: 700;
+}
+.size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 2px 0 6px;
+}
+.size .k {
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.size b {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.size .d {
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.size .date {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+.berg-box {
+  width: 100%;
+  margin: 4px 0 10px;
+}
+.berg {
+  position: relative;
+  margin: 0 auto;
+  color: #14204f;
+  line-height: 1.45;
+}
+.berg-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+.berg .wl {
+  position: absolute;
+  font-size: 9px;
+  color: var(--berg-navy);
+}
+.berg .bl {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: inherit;
+  color: inherit;
+}
+.berg .bl.pm {
+  font-weight: 400;
+  font-size: 0.9em;
+  color: #2b3f7a;
+}
+.berg .bl.tipx {
+  color: #fff;
+}
+.berg button.bl.tipx {
+  text-decoration: underline dotted rgba(255, 255, 255, 0.6);
+  text-underline-offset: 2px;
+}
+.berg .callout {
+  position: absolute;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--sub);
+}
+.berg .callout b {
+  color: var(--shu);
+}
+.berg .w {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+}
+.berg .w.show,
+.berg .w:hover {
+  z-index: 6;
+}
+.w-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  white-space: nowrap;
+  border-radius: 4px;
+}
+.w-btn::before,
+.mk {
+  content: '';
+  display: inline-block;
+  box-sizing: content-box;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.3px solid currentColor;
+  margin-right: 3px;
+  vertical-align: 1px;
+}
+.w.minus .w-btn::before {
+  display: none;
+}
+.g1 .w-btn::before,
+.mk.g1 {
+  background: transparent;
+}
+.g2 .w-btn::before,
+.mk.g2 {
+  background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+}
+.g3 .w-btn::before,
+.mk.g3 {
+  background: currentColor;
+}
+.berg .w.del {
+  color: #7d8793;
+}
+.berg .w.show .w-btn {
+  background: rgba(255, 255, 255, 0.6);
+}
+.berg .pop {
+  display: none;
+  position: absolute;
+  width: max-content;
+  max-width: 230px;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.22);
+  white-space: nowrap;
+  font-size: 10.5px;
+  line-height: 1.55;
+  text-align: left;
+  font-weight: 400;
+  color: var(--date);
+}
+.berg .pop.l {
+  left: 0;
+  transform: none;
+}
+.berg .pop.r {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.berg .w.show .pop {
+  display: block;
+}
+@media (hover: hover) {
+  .berg .w:hover .pop {
+    display: block;
+  }
+}
+.pop-full {
+  display: block;
+  white-space: normal;
+  color: var(--ink);
+  font-size: 11.5px;
+}
+.pop-date {
+  display: block;
+}
+.berg .pop .more-wrap {
+  margin-top: 2px;
+}
+.chip-more {
+  position: absolute;
+  border: 1px solid rgba(27, 42, 107, 0.35);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--berg-navy);
+  font-size: 0.95em;
+  padding: 0;
+  white-space: nowrap;
+}
+.center {
+  text-align: center;
+}
+.layer-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 0 0 8px;
+}
+.layer-pick button,
+.stage-pick button {
+  border: 1px solid rgba(42, 39, 34, 0.18);
+  background: #fff;
+  border-radius: 9px;
+  padding: 7px 4px;
+  font-size: 12.5px;
+}
+.layer-pick button.on,
+.stage-pick button.on {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+  font-weight: 700;
+}
+.stage-pick {
+  display: flex;
+  gap: 4px;
+  margin: 8px 0 2px;
+}
+.stage-pick button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  color: var(--ink);
+}
+.stage-pick small {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+  line-height: 1.3;
+}
+.stage-tag {
+  flex: none;
+  font-size: 11px;
+  color: var(--sub);
+}
+ul.plain {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.sub-h {
+  display: block;
+  font-size: 12.5px;
+  margin: 6px 0 0;
+}
+.field.mono {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+}
+.summary {
+  border-collapse: collapse;
+  font-size: 12.5px;
+  margin: 0 0 8px;
+}
+.summary th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--sub);
+  padding: 2px 12px 2px 0;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.summary td {
+  padding: 2px 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

@@ -21,6 +21,12 @@ function useVisibleArea(ref) {
   }, [ref]);
 }
 
+// 1行の入力で Enter を押したら保存する
+// 変換を確定する Enter では保存しない（Safari は isComposing が false で keyCode 229 になる）
+export function enterToSave(e, save) {
+  if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) save();
+}
+
 // 下から出る小さな画面（スマホ）／中央の小窓（PC）
 // keep：外側を押しても閉じない（書きかけの文字を消さないように）
 export function Modal({ title, onClose, children, footer, keep = false }) {
@@ -97,10 +103,7 @@ export function EditDialog({ title, initial = '', multiline = false, placeholder
           placeholder={placeholder}
           enterKeyHint="done"
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            // 変換を確定する Enter では保存しない（Safari は isComposing が false で keyCode 229 になる）
-            if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) save();
-          }}
+          onKeyDown={(e) => enterToSave(e, save)}
         />
       )}
       {children}

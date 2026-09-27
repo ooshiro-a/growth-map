@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-// カーソルを合わせられる端末（PC）か
-export function useCanHover() {
+// 画面の条件（幅・カーソルの有無など）に合うか
+export function useMedia(query) {
   const [v, setV] = useState(() => {
     try {
-      return window.matchMedia('(hover: hover)').matches;
+      return window.matchMedia(query).matches;
     } catch {
       return false;
     }
@@ -12,15 +12,41 @@ export function useCanHover() {
   useEffect(() => {
     let mq;
     try {
-      mq = window.matchMedia('(hover: hover)');
+      mq = window.matchMedia(query);
     } catch {
       return undefined;
     }
     const on = () => setV(mq.matches);
+    on();
     mq.addEventListener?.('change', on);
     return () => mq.removeEventListener?.('change', on);
-  }, []);
+  }, [query]);
   return v;
+}
+
+// カーソルを合わせられる端末（PC）か
+export const useCanHover = () => useMedia('(hover: hover)');
+
+// 要素の幅（変わったら測り直す）
+export function useWidth(ref, fallback = 343) {
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const read = () => {
+      const cw = el.clientWidth;
+      if (cw > 0) setW(cw);
+    };
+    read();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', read);
+      return () => window.removeEventListener('resize', read);
+    }
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return w;
 }
 
 // 画面の場所（#/map/iceberg など）。サーバー側の設定なしで読み込み直しても同じ画面に戻る

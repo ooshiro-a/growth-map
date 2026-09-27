@@ -8,6 +8,7 @@ import { currentYear, now, setClockOffset } from './lib/clock.js';
 import { buildModel } from './lib/fold.js';
 import { PER_YEAR_KINDS } from './lib/schema.js';
 import { createStore } from './lib/store.js';
+import { IcebergScreen } from './screens/IcebergScreen.jsx';
 import { PassphraseScreen } from './screens/PassphraseScreen.jsx';
 import { Placeholder } from './screens/Placeholder.jsx';
 import { Settings } from './screens/Settings.jsx';
@@ -21,7 +22,7 @@ function screenFor(tab, sub, year) {
     case 'map':
       if (sub === 'brake') return { title: `成長の地図 ${year}年`, el: <Placeholder name="ブレーキ" phase={6} /> };
       if (sub === 'accel') return { title: `成長の地図 ${year}年`, el: <Placeholder name="アクセル" phase={5} /> };
-      return { title: `成長の地図 ${year}年`, el: <Placeholder name="アイスバーグ" phase={2} /> };
+      return { title: `成長の地図 ${year}年`, el: <IcebergScreen year={year} /> };
     case 'review':
       return { title: '振り返り', el: <Placeholder name="振り返り" phase={3} /> };
     case 'life':
@@ -105,7 +106,7 @@ export default function App() {
         setYear(y);
         store.reload();
         // 前の年の地図（年ごとの種類）への書き込みだけ止める。振り返りなどはそのまま書く
-        if (drafts.some((d) => PER_YEAR_KINDS.has(d.kind) && Number(d.year) < y)) {
+        if (drafts.some((d) => PER_YEAR_KINDS.has(d.kind) && Number(d.year) < y && d.extra?.source !== 'seed')) {
           store.notify(`年が変わりました（${y}年）。前の年の地図は見るだけです`);
           return null;
         }

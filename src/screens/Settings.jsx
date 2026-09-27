@@ -8,6 +8,7 @@ import { clockOffset, now } from '../lib/clock.js';
 import { formatJpDate, jstParts } from '../lib/dates.js';
 import { newId } from '../lib/ids.js';
 import { KIND, LAYER, OP, SCHEMA_VERSION } from '../lib/schema.js';
+import { SeedImport } from './SeedImport.jsx';
 
 // 往復テストで送る文字（シートで数式・日付・数に化けないか）
 const TRICKY = ['=1+1', '+5', '-3', '@x', "'x", "'=x", '1/2', '12月6日', '001', 'TRUE', '1e3', '2026-12-06', '{"a":1}', '改行\nあり', '  前後の空白  '];
@@ -171,7 +172,8 @@ export function Settings() {
         <div className="sec">
           <span>初回の取り込み</span>
         </div>
-        <p className="note">初期データはフェーズ2、旧マインドマップはフェーズ7で作ります</p>
+        <SeedImport />
+        <p className="note">旧マインドマップの取り込みはフェーズ7で作ります</p>
       </section>
 
       {env === 'test' && (
