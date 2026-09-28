@@ -14,14 +14,16 @@ import { HomeScreen } from './screens/HomeScreen.jsx';
 import { IcebergScreen } from './screens/IcebergScreen.jsx';
 import { LifeMapScreen } from './screens/LifeMapScreen.jsx';
 import { LongtermScreen } from './screens/LongtermScreen.jsx';
+import { GrowthTimeline } from './screens/GrowthTimeline.jsx';
 import { PassphraseScreen } from './screens/PassphraseScreen.jsx';
-import { Placeholder } from './screens/Placeholder.jsx';
 import { ReviewScreen } from './screens/ReviewScreen.jsx';
 import { Settings } from './screens/Settings.jsx';
+import { YearRecord } from './screens/YearRecord.jsx';
 
 const storage = safeStorage();
 
-function screenFor(tab, sub, year) {
+// rest：場所の続き（年ごとの記録の年と中身。#/timeline/years/2026/brake）
+function screenFor(tab, sub, year, rest, go) {
   switch (tab) {
     case 'home':
       return { title: `${year}年`, el: <HomeScreen /> };
@@ -36,10 +38,13 @@ function screenFor(tab, sub, year) {
     case 'life':
       return { title: '人生マップ', el: <LifeMapScreen /> };
     case 'timeline':
-      return {
-        title: '年表',
-        el: <Placeholder name={sub === 'years' ? '年ごとの記録' : 'アイスバーグ成長年表'} phase={8} />,
-      };
+      if (sub === 'years') {
+        return {
+          title: '年表',
+          el: <YearRecord year={Number(rest[0]) || null} part={rest[1] || null} onChange={(y, p) => go(`timeline/years/${y}/${p}`)} />,
+        };
+      }
+      return { title: '年表', el: <GrowthTimeline onOpen={(y) => go(`timeline/years/${y}/iceberg`)} /> };
     case 'settings':
       return { title: '設定', el: <Settings /> };
     default:
@@ -178,10 +183,10 @@ export default function App() {
     );
   }
 
-  const [tab, sub0] = route.split('/');
+  const [tab, sub0, ...rest] = route.split('/');
   // 振り返りの中（逆算ロードマップ・アクションプラン）は切り替えを出さずに、場所だけで分ける
   const sub = SUBTABS[tab] ? SUBTABS[tab].find((s) => s.key === sub0)?.key || SUBTABS[tab][0].key : sub0 || null;
-  const { title, el } = screenFor(tab, sub, year);
+  const { title, el } = screenFor(tab, sub, year, rest, go);
 
   return (
     <AppContext.Provider value={ctx}>
