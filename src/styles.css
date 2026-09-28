@@ -1190,3 +1190,55 @@ a.link-row .note {
 .layer-pick button.wide {
   grid-column: 1 / -1;
 }
+
+/* ブレーキ */
+.brake-count {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--sub);
+}
+.brake-count b {
+  font-size: 15px;
+  color: var(--matsu);
+  font-variant-numeric: tabular-nums;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.bchip {
+  font-size: 11.5px;
+  line-height: 1.5;
+  border-radius: 10px;
+  padding: 0 8px;
+  color: var(--sub);
+  background: #eeece7;
+  white-space: nowrap;
+}
+.bchip.facing {
+  color: var(--shu);
+  background: #f8e6de;
+  font-weight: 700;
+}
+.bchip.released {
+  color: var(--matsu);
+  background: #e6f1ea;
+  font-weight: 700;
+}
+.item.del .bchip {
+  color: var(--gone);
+  background: #f0eee9;
+}
+.brake-sort {
+  margin-top: 10px;
+}
+.pick-label {
+  margin: 6px 0 4px;
+  font-size: 12.5px;
+  color: var(--sub);
+}
+.brake-sort .layer-pick {
+  grid-template-columns: 1fr 1fr 0.7fr;
+}
