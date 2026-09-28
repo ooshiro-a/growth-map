@@ -319,6 +319,7 @@ button:disabled {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .item.del .tx {
   color: var(--gone);
@@ -924,6 +925,156 @@ ul.plain {
 }
 .summary td {
   padding: 2px 0;
+}
+
+/* ---------------------------------------------------------------- 振り返り */
+.year-pick {
+  border: 1px solid rgba(42, 39, 34, 0.22);
+  border-radius: 8px;
+  background: #fff;
+  padding: 3px 6px;
+  font-size: 13px;
+  max-width: 120px;
+}
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 10.5px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.judge {
+  flex: none;
+  display: inline-flex;
+  border: 1px solid rgba(42, 39, 34, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.judge button {
+  border: none;
+  background: #fff;
+  font-size: 12px;
+  padding: 3px 9px;
+  color: var(--sub);
+  min-height: 26px;
+}
+.judge button + button {
+  border-left: 1px solid rgba(42, 39, 34, 0.14);
+}
+.judge button.ach.on {
+  background: var(--matsu);
+  color: #fff;
+  font-weight: 700;
+}
+.judge button.miss.on {
+  background: var(--sub);
+  color: #fff;
+  font-weight: 700;
+}
+.judge-tag {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+.judge-tag.ach {
+  background: #e6f1ea;
+  color: var(--matsu);
+}
+.judge-tag.miss {
+  background: #eeece7;
+  color: var(--sub);
+}
+.box {
+  display: block;
+  width: 100%;
+  margin: 4px 0 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--head);
+  text-align: left;
+}
+.box-tx {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.box-date {
+  font-size: 11px;
+  color: var(--date);
+  margin-top: 4px;
+}
+.box.empty {
+  color: var(--sub);
+  border-style: dashed;
+  font-size: 13px;
+}
+a.link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+a.link-row .note {
+  margin: 0;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- 長期 */
+.back {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--sub);
+  text-decoration: none;
+  margin: 0 0 8px;
+}
+.lead {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ai);
+  background: #e8f0f6;
+  border-radius: 6px;
+  padding: 0 6px;
+  margin-right: 6px;
+}
+.item.del .lead {
+  color: var(--gone);
+  background: #f0eee9;
+}
+.subline {
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.item.del .subline {
+  color: var(--gone);
+}
+.plan-goal .tx {
+  font-weight: 700;
+}
+.means {
+  border-left: 2px solid var(--line);
+  margin: 0 0 4px 4px;
+  padding-left: 10px;
+}
+.fld {
+  display: block;
+}
+.fld .lbl small {
+  color: var(--muted);
+  margin-left: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {

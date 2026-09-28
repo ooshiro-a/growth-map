@@ -56,12 +56,32 @@ export function dateLine(e, { perYear = false, deleted = null } = {}) {
   return `${added}／${recDate(last)}に${opWord(last, e.kind, change)}`;
 }
 
+// 振り返り②④の日付（いつも出す）：「書いた日：27年12月30日」「…／28年1月3日に修正」
+export function writtenLine(e) {
+  if (!e) return '';
+  const first = `書いた日：${formatJpDate(e.addedAt)}`;
+  if (!e.lastRec || e.lastRec === e.createdRec) return first;
+  return `${first}／${recDate(e.lastRec)}に修正`;
+}
+
+// 長期の属性（時期・頻度・打ち手）
+export const LONGTERM_ATTR = { when: '時期', freq: '頻度', tactic: '打ち手' };
+export function attrText(attrs, keys = ['when', 'freq', 'tactic']) {
+  return keys
+    .filter((k) => attrs && attrs[k])
+    .map((k) => `${LONGTERM_ATTR[k]}：${attrs[k]}`)
+    .join('／');
+}
+
 // 履歴の1行の中身
 export function historyText(rec, kind) {
   switch (rec.op) {
     case OP.ADD:
-    case OP.EDIT:
-      return `${opWord(rec, kind)}「${rec.text}」`;
+    case OP.EDIT: {
+      if (kind === KIND.REVIEW) return rec.text ? `書いた「${rec.text}」` : '空にした';
+      const attrs = kind === KIND.LONGTERM ? attrText(rec.extra) : '';
+      return `${opWord(rec, kind)}「${rec.text}」${attrs ? `（${attrs}）` : ''}`;
+    }
     case OP.SCORE:
       if (kind === KIND.ICEBERG) return `採点「${stageName(rec.value)}」`;
       return `点数「${scoreText(rec.value)}」`;

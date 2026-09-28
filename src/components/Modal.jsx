@@ -68,11 +68,12 @@ export function Modal({ title, onClose, children, footer, keep = false }) {
 }
 
 // 文言を入れる（追加・編集）。onSave が false を返したら閉じない（書けなかった時に入力を残す）
-export function EditDialog({ title, initial = '', multiline = false, placeholder = '', saveLabel = '保存する', maxLength, onSave, onClose, children }) {
+// allowEmpty：空にして保存できる（振り返りの自由に書く欄）
+export function EditDialog({ title, initial = '', multiline = false, rows = 5, placeholder = '', saveLabel = '保存する', maxLength, allowEmpty = false, onSave, onClose, children }) {
   const [text, setText] = useState(initial);
   const clean = text.trim();
   const limit = maxLength ?? (multiline ? 5000 : 300);
-  const canSave = !!clean && clean !== initial.trim();
+  const canSave = (allowEmpty || !!clean) && clean !== initial.trim();
   const save = () => {
     if (!canSave) return;
     if (onSave(clean) === false) return;
@@ -95,7 +96,7 @@ export function EditDialog({ title, initial = '', multiline = false, placeholder
       }
     >
       {multiline ? (
-        <textarea className="field" rows={5} maxLength={limit} value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} />
+        <textarea className="field" rows={rows} maxLength={limit} value={text} placeholder={placeholder} aria-label={title} onChange={(e) => setText(e.target.value)} />
       ) : (
         <input
           className="field"

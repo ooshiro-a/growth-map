@@ -9,8 +9,10 @@ import { buildModel } from './lib/fold.js';
 import { PER_YEAR_KINDS } from './lib/schema.js';
 import { createStore } from './lib/store.js';
 import { IcebergScreen } from './screens/IcebergScreen.jsx';
+import { LongtermScreen } from './screens/LongtermScreen.jsx';
 import { PassphraseScreen } from './screens/PassphraseScreen.jsx';
 import { Placeholder } from './screens/Placeholder.jsx';
+import { ReviewScreen } from './screens/ReviewScreen.jsx';
 import { Settings } from './screens/Settings.jsx';
 
 const storage = safeStorage();
@@ -24,7 +26,9 @@ function screenFor(tab, sub, year) {
       if (sub === 'accel') return { title: `成長の地図 ${year}年`, el: <Placeholder name="アクセル" phase={5} /> };
       return { title: `成長の地図 ${year}年`, el: <IcebergScreen year={year} /> };
     case 'review':
-      return { title: '振り返り', el: <Placeholder name="振り返り" phase={3} /> };
+      if (sub === 'roadmap') return { title: '逆算ロードマップ', el: <LongtermScreen part="roadmap" /> };
+      if (sub === 'plan') return { title: 'アクションプラン', el: <LongtermScreen part="plan" /> };
+      return { title: '振り返り', el: <ReviewScreen /> };
     case 'life':
       return { title: '人生マップ', el: <Placeholder name="人生マップ" phase={7} /> };
     case 'timeline':
@@ -171,7 +175,8 @@ export default function App() {
   }
 
   const [tab, sub0] = route.split('/');
-  const sub = SUBTABS[tab] ? SUBTABS[tab].find((s) => s.key === sub0)?.key || SUBTABS[tab][0].key : null;
+  // 振り返りの中（逆算ロードマップ・アクションプラン）は切り替えを出さずに、場所だけで分ける
+  const sub = SUBTABS[tab] ? SUBTABS[tab].find((s) => s.key === sub0)?.key || SUBTABS[tab][0].key : sub0 || null;
   const { title, el } = screenFor(tab, sub, year);
 
   return (
