@@ -6,12 +6,13 @@ import { OP, PER_YEAR_KINDS } from '../lib/schema.js';
 import { HistorySheet } from './HistorySheet.jsx';
 import { ConfirmDialog, EditDialog } from './Modal.jsx';
 import { MoreMenu } from './MoreMenu.jsx';
+import { PURGE_LABEL, PurgeDialog } from './PurgeDialog.jsx';
 import { ItemRow } from './ItemRow.jsx';
 
 const isPending = (e) => e.history.some((r) => r.pending);
 
 // 文言だけの項目の並び（指標・自分軸・動作確認など）
-// 「…」：編集／この下に追加／削除（灰色で残る）／履歴。削除した項目は履歴だけ
+// 「…」：編集／この下に追加／削除（灰色で残る）／履歴／完全に削除。削除した項目は履歴と完全に削除だけ
 export function ItemList({ kind, layer = '', year = null, title, emptyText = 'まだありません', addLabel = '追加する', viewOnly = false }) {
   const { model, write, readOnly } = useApp();
   const perYear = PER_YEAR_KINDS.has(kind);
@@ -28,13 +29,19 @@ export function ItemList({ kind, layer = '', year = null, title, emptyText = '�
   const remove = (e) => ok(write([{ year: year ?? '', kind, id: e.id, op: OP.DELETE }]));
 
   const menuFor = (e) =>
-    e.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
+      : e.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', after: e.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
 
   return (
@@ -71,6 +78,7 @@ export function ItemList({ kind, layer = '', year = null, title, emptyText = '�
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.type === 'purge' && <PurgeDialog e={dialog.e} year={year ?? ''} note={perYear ? '前の年からも消えます。' : ''} onClose={() => setDialog(null)} />}
       {dialog?.type === 'hist' && <HistorySheet kind={kind} id={dialog.e.id} title={dialog.e.text} onClose={() => setDialog(null)} />}
     </section>
   );

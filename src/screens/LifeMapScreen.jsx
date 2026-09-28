@@ -3,6 +3,7 @@ import { useApp } from '../app-context.js';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { now } from '../lib/clock.js';
 import { jstParts } from '../lib/dates.js';
 import { newId } from '../lib/ids.js';
@@ -17,7 +18,7 @@ const isPending = (e) => e.history.some((r) => r.pending);
 
 // 元に戻す：この端末で、ページを開いてから書いた記録だけ（新しい順に1つずつ打ち消す）
 // 取り込んだ中身や、別の端末で書いたものは戻さない
-const undoStack = []; // [{ env, no, id, label }]
+const undoStack = []; // [{ env, nos, id, label }]
 
 // 1本の枝（旧アプリの形：真ん中は金、最初の枝は朱・藍・松葉・菖蒲の順）
 function Branch({ node, color, ui }) {
@@ -139,11 +140,14 @@ export function LifeMapScreen() {
   };
 
   const mine = undoStack.filter((u) => u.env === env);
+  const remember = (rows, id, label) => {
+    undoStack.push({ env, nos: rows.map((row) => row[2]), id, label });
+    setUndoCount(undoStack.length);
+  };
   const put = (draft, label) => {
     const rows = write([draft]);
     if (rows == null) return false;
-    undoStack.push({ env, no: rows[0][2], id: draft.id, label });
-    setUndoCount(undoStack.length);
+    remember(rows, draft.id, label);
     return true;
   };
   const addNode = (parent, text, after) => {
@@ -166,7 +170,7 @@ export function LifeMapScreen() {
     while (i >= 0 && undoStack[i].env !== env) i--;
     if (i < 0) return;
     const u = undoStack[i];
-    const rows = write([{ year: '', kind: M, id: u.id, op: OP.UNDO, extra: { undo: u.no } }]);
+    const rows = write(u.nos.map((no) => ({ year: '', kind: M, id: u.id, op: OP.UNDO, extra: { undo: no } })));
     if (rows == null) return;
     undoStack.splice(i, 1);
     setUndoCount(undoStack.length);
@@ -177,13 +181,17 @@ export function LifeMapScreen() {
   const menuFor = (node) => {
     const { e, depth, deleted } = node;
     const hist = { label: '履歴', onSelect: () => setDialog({ type: 'hist', e }) };
-    if (deleted || readOnly) return [hist];
+    // 真ん中は消さない（マップ全体が消えるため）
+    const purge = depth > 0 && { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e, kids: node.children.length > 0 }) };
+    if (readOnly) return [hist];
+    if (deleted) return [hist, purge];
     return [
       { label: '文字を直す', onSelect: () => setDialog({ type: 'edit', e }) },
       { label: '枝を伸ばす', onSelect: () => setDialog({ type: 'child', e }) },
       depth > 0 && { label: '下に追加', onSelect: () => setDialog({ type: 'sibling', e }) },
       depth > 0 && { label: '削除', warn: true, onSelect: () => setDialog({ type: 'del', e, kids: node.children.length > 0 }) },
       hist,
+      purge,
     ];
   };
   const ui = {
@@ -297,6 +305,18 @@ export function LifeMapScreen() {
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}
+          onClose={close}
+        />
+      )}
+      {dialog?.type === 'purge' && (
+        <PurgeDialog
+          e={dialog.e}
+          note={dialog.kids ? 'この先の枝もいっしょに消えます。' : ''}
+          undoable
+          onDone={(rows) => {
+            remember(rows, dialog.e.id, `「${dialog.e.text}」の完全な削除`);
+            setSelected(null);
+          }}
           onClose={close}
         />
       )}

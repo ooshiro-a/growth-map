@@ -301,6 +301,6 @@ describe('長期の画面', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '削除する' }));
     expect(screen.getByText('作り物の手段').closest('.item').className).toContain('del');
     openMenu('「作り物の手段」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 });

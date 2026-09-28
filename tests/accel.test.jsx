@@ -133,7 +133,7 @@ describe('アクセルの画面', () => {
     expect(log.at(-1)).toMatchObject({ kind: '自分軸', op: '削除' });
     expect(screen.getByText('作り物の理念C').closest('.item').className).toContain('del');
     openMenu('「作り物の理念C」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
   it('動機：点数を変える（0〜10）・中身を足す。図の矢印は点数のある区分だけ', () => {

@@ -4,6 +4,7 @@ import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { newId } from '../lib/ids.js';
 import { attrText, dateLine } from '../lib/labels.js';
@@ -135,6 +136,7 @@ function Dialogs({ dialog, setDialog, lt }) {
         onClose={close}
       />
     );
+  if (type === 'purge') return <PurgeDialog e={e} note={e.layer === LAYER.PLAN_GOAL ? 'この目標の手段もいっしょに消えます。' : ''} onClose={close} />;
   if (type === 'hist') return <HistorySheet kind={K} id={e.id} title={e.text} onClose={close} />;
   return null;
 }
@@ -151,13 +153,19 @@ function Roadmap({ locked }) {
   const lt = useLongtermWrite();
   const [dialog, setDialog] = useState(null);
   const menuFor = (e) =>
-    e.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
+      : e.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: e.layer, after: e.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
   return (
     <>
@@ -198,23 +206,35 @@ function Plan({ locked }) {
   const plan = actionPlan(model);
 
   const goalMenu = (g) =>
-    g.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: g }) }]
+      : g.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: g }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: g }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e: g }) },
           { label: '手段を追加', onSelect: () => setDialog({ type: 'add', layer: LAYER.PLAN_MEANS, parent: g.id }) },
           { label: 'この下に目標を追加', onSelect: () => setDialog({ type: 'add', layer: LAYER.PLAN_GOAL, after: g.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e: g }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: g }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: g }) },
         ];
   const meansMenu = (m, deleted) =>
-    deleted || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: m }) }]
+      : deleted
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: m }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: m }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e: m }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: LAYER.PLAN_MEANS, parent: m.parent, after: m.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e: m }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: m }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: m }) },
         ];
 
   return (

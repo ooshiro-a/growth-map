@@ -170,7 +170,7 @@ describe('人生マップの画面', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
 
     openMenu('「作り物の枝A」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['文字を直す', '枝を伸ばす', '下に追加', '削除', '履歴']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['文字を直す', '枝を伸ばす', '下に追加', '削除', '履歴', '完全に削除する']);
     choose('文字を直す');
     typeAndSave('文字を直す', '作り物の枝A・改', '保存する');
     expect(log.at(-1)).toEqual({ year: '', kind: 'マップ', id: 'na', op: '修正', text: '作り物の枝A・改' });
@@ -197,7 +197,7 @@ describe('人生マップの画面', () => {
     expect(branchA.querySelectorAll('.lm-branch')).toHaveLength(3);
     // 削除した枝（と、その先）は履歴だけ
     openMenu('「作り物の葉A1」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴', '完全に削除する']);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByRole('button', { name: '作り物の葉A1' }).closest('.lm-node').querySelector('.date').textContent).toMatch(/に追加／26年9月29日に削除$/);
   });

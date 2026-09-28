@@ -4,6 +4,7 @@ import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { BRAKE_KINDS, BRAKE_KIND_NAME, CONTROL, FACING, PLACE, RELEASED, brakeYear, isReleased } from '../lib/brake.js';
 import { newId } from '../lib/ids.js';
@@ -137,8 +138,13 @@ export function BrakeScreen({ year, viewOnly = false }) {
   const remove = (e) => ok(write([{ year, kind: B, id: e.id, op: OP.DELETE }]));
 
   const menuFor = (e) =>
-    e.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
+      : e.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           isReleased(e)
@@ -147,6 +153,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', kind: e.layer, after: e.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
 
   return (
@@ -218,6 +225,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
           onClose={close}
         />
       )}
+      {dialog?.type === 'purge' && <PurgeDialog e={dialog.e} year={year} note="前の年からも消えます。" onClose={close} />}
       {dialog?.type === 'hist' && <HistorySheet kind={B} id={dialog.e.id} title={dialog.e.text} onClose={close} />}
     </div>
   );

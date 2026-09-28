@@ -3,6 +3,7 @@ import { useApp } from '../app-context.js';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { icebergYear } from '../lib/iceberg.js';
 import { newId } from '../lib/ids.js';
@@ -92,13 +93,19 @@ function Principles({ year, locked }) {
   const remove = (e) => ok(write([{ year: '', kind: K, id: e.id, op: OP.DELETE }]));
 
   const menuFor = (e) =>
-    e.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
+      : e.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', after: e.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
   const close = () => setDialog(null);
 
@@ -136,6 +143,7 @@ function Principles({ year, locked }) {
           onClose={close}
         />
       )}
+      {dialog?.type === 'purge' && <PurgeDialog e={dialog.e} onClose={close} />}
       {dialog?.type === 'hist' && <HistorySheet kind={K} id={dialog.e.id} title={dialog.e.text} onClose={close} />}
     </section>
   );

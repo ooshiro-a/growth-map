@@ -139,7 +139,7 @@ describe('ホームの画面', () => {
     expect(log.at(-1)).toMatchObject({ kind: '指標', op: '削除' });
     expect(screen.getByText('作り物の指標C').closest('.item').className).toContain('del');
     openMenu('「作り物の指標C」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
   it('指標：アイスバーグの「意識・想い・人生哲学」からまとめて選ぶ。入れ済み・削除した言葉・ほかの層は選べない', () => {

@@ -4,6 +4,7 @@ import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog } from '../components/Modal.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { now } from '../lib/clock.js';
 import { newId } from '../lib/ids.js';
@@ -61,13 +62,19 @@ export function GoalSection({ num = null, title, goalYear, judge = false, tags =
     write([op ? { year: goalYear, kind: KIND.GOAL, id: g.id, op } : { year: goalYear, kind: KIND.GOAL, id: g.id, op: OP.STATUS, value: '' }]);
 
   const menuFor = (g) =>
-    g.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', g }) }]
+      : g.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', g }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', g }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', g }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', after: g.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', g }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', g }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', g }) },
         ];
   const c = judge ? goalCounts(goals) : null;
 
@@ -111,6 +118,7 @@ export function GoalSection({ num = null, title, goalYear, judge = false, tags =
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.type === 'purge' && <PurgeDialog e={dialog.g} year={goalYear} onClose={() => setDialog(null)} />}
       {dialog?.type === 'hist' && <HistorySheet kind={KIND.GOAL} id={dialog.g.id} title={dialog.g.text} onClose={() => setDialog(null)} />}
     </section>
   );

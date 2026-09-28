@@ -210,7 +210,7 @@ describe('ブレーキの画面', () => {
     expect(log.at(-1)).toMatchObject({ kind: 'ブレーキ', id: 'nb2', op: '削除' });
     expect(screen.getByText('作り物の子ども・改').closest('.item').className).toContain('del');
     openMenu('「作り物の子ども・改」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
     choose('履歴を見る');
     const h = dlg('履歴：作り物の子ども・改');
     expect(within(h).getByText(/修正「作り物の子ども・改」/)).toBeTruthy();

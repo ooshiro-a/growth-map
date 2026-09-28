@@ -67,7 +67,7 @@ describe('共通の並び（ItemList）', () => {
     expect(within(row).getByText(/26年9月27日に追加／26年9月27日に削除/)).toBeTruthy();
 
     openMenu('「三番目」の操作');
-    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
     choose('履歴を見る');
     expect(within(screen.getByRole('dialog')).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       '26年9月27日追加「三番目」',

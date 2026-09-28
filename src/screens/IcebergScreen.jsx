@@ -5,6 +5,7 @@ import { HistorySheet } from '../components/HistorySheet.jsx';
 import { Iceberg } from '../components/Iceberg.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { useMedia } from '../hooks.js';
 import { ICEBERG_LAYERS, LAYER_NAME, icebergYear } from '../lib/iceberg.js';
 import { newId } from '../lib/ids.js';
@@ -107,13 +108,19 @@ export function IcebergScreen({ year, viewOnly = false }) {
   const remove = (e) => ok(write([{ year, kind: K, id: e.id, op: OP.DELETE }]));
 
   const menuFor = (e) =>
-    e.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
+      : e.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           { label: 'この層に追加', onSelect: () => setDialog({ type: 'add', layer: e.layer, after: e.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
   const dateOf = (e) => dateLine(e, { perYear: true }).split('／');
 
@@ -194,6 +201,7 @@ export function IcebergScreen({ year, viewOnly = false }) {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog?.type === 'purge' && <PurgeDialog e={dialog.e} year={year} note="前の年からも消えます。" onClose={() => setDialog(null)} />}
       {dialog?.type === 'hist' && <HistorySheet kind={K} id={dialog.e.id} title={dialog.e.text} onClose={() => setDialog(null)} />}
       {dialog?.type === 'goals' && (
         <Modal title={`成果（${year}年に達成した目標）`} onClose={() => setDialog(null)}>

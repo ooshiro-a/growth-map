@@ -4,6 +4,7 @@ import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog, Modal, enterToSave } from '../components/Modal.jsx';
+import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { QUADRANT_DIR, QUADRANT_NAME, axisOf, motiveYear, scoreLine } from '../lib/accel.js';
 import { newId } from '../lib/ids.js';
@@ -180,13 +181,19 @@ export function AccelScreen({ year, viewOnly = false }) {
   const setScore = (q, n) => ok(write([{ year, kind: MV, id: motiveQuadrantId(q), op: OP.SCORE, layer: q, value: String(n) }]));
 
   const menuFor = (e) =>
-    e.deletedRec || locked
+    locked
       ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
+      : e.deletedRec
+      ? [
+          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
+        ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', kind: e.kind, q: e.layer, after: e.id }) },
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
+          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
   const quadMenu = (x) => [
     !locked && { label: '点数を変える', onSelect: () => setDialog({ type: 'score', x }) },
@@ -264,6 +271,7 @@ export function AccelScreen({ year, viewOnly = false }) {
           onClose={close}
         />
       )}
+      {dialog?.type === 'purge' && <PurgeDialog e={dialog.e} year={year} note="前の年からも消えます。" onClose={close} />}
       {dialog?.type === 'hist' && <HistorySheet kind={dialog.e.kind} id={dialog.e.id} title={dialog.e.text} onClose={close} />}
       {dialog?.type === 'score' && <ScoreDialog name={dialog.x.name} value={dialog.x.score} onClose={close} onSave={(n) => setScore(dialog.x.q, n)} />}
       {dialog?.type === 'scoreHist' && <HistorySheet kind={MV} id={motiveQuadrantId(dialog.x.q)} title={`${dialog.x.name}の点数`} onClose={close} />}
