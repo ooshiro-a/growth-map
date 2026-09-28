@@ -4,13 +4,17 @@
 // - 送った返事に「知っている行より後の行」が全部入るので、書くたびに最新になる
 // - シートは足すだけなので、手元の行は減らさない（読み込みと送信が重なっても消えない）
 // - 送れない行（形がおかしい・前の年）は「送れなかった記録」に移し、残りは送り続ける
+// - 画面に戻った時・通信が戻った時は、すぐ送る。止まっていた送信（スマホで裏に回った時など）は捨てて送り直す
+//   （同じ記録番号で送るので、GAS が重なりを除く）
 import * as defaultApi from './api.js';
 import { ERROR_TEXT } from './api.js';
 import { toJstIso } from './dates.js';
 import { newRecordNo } from './ids.js';
 import { SCHEMA_VERSION, toRow } from './schema.js';
 
-const RETRY_MS = [3000, 10000, 30000, 60000];
+const RETRY_MS = [1000, 3000, 10000, 30000, 60000];
+const APPEND_TIMEOUT_MS = 15000;
+const STALE_MS = 8000; // これより長く返事がない送信は、画面に戻った時に送り直す
 const LOCKED_RETRY_MS = 5 * 60 * 1000;
 const BATCH = 200;
 export const MAX_CELL = 20000;
@@ -69,6 +73,7 @@ export function createStore({
     phase: 'init', // init | needPass | loading | ready | error
     refreshing: false,
     saving: false,
+    lastSave: null, // { ms, serverMs, at }：最後に送れた時にかかった時間（設定に出す）
     error: null,
     notice: null,
     serverYear: null,
@@ -81,6 +86,7 @@ export function createStore({
   };
 
   let flushing = false;
+  let inflight = null; // 送っている最中：{ ctrl, startedAt, restart }
   let retryTimer = null;
   let retryCount = 0;
   let lockedTimer = null;
@@ -218,10 +224,15 @@ export function createStore({
     set({ saving: true });
     const batch = state.pending.slice(0, BATCH);
     const my = ++reqSeq;
+    const mine = { ctrl: typeof AbortController === 'undefined' ? null : new AbortController(), startedAt: nowFn(), restart: false };
+    inflight = mine;
     let again = false;
     try {
       const known = state.rows.length;
-      const res = await api.append(state.url, cred(), batch.map((p) => p.row), known);
+      const res = await api.append(state.url, cred(), batch.map((p) => p.row), known, {
+        timeoutMs: APPEND_TIMEOUT_MS,
+        signal: mine.ctrl ? mine.ctrl.signal : undefined,
+      });
       if (disposed) return;
       const tail = Array.isArray(res.rows) ? res.rows : [];
       const from = Number(res.from) || 0;
@@ -240,13 +251,17 @@ export function createStore({
       );
       gen++;
       retryCount = 0;
-      set({ rows, pending, cachedAt: null, error: null, serverYear: res.serverYear ?? state.serverYear, syncedSeq: gap ? state.syncedSeq : Math.max(state.syncedSeq, my), ...takeKey(res) });
+      const lastSave = { ms: nowFn() - mine.startedAt, serverMs: Number.isFinite(res.serverMs) ? res.serverMs : null, at: nowFn() };
+      set({ rows, pending, cachedAt: null, error: null, lastSave, serverYear: res.serverYear ?? state.serverYear, syncedSeq: gap ? state.syncedSeq : Math.max(state.syncedSeq, my), ...takeKey(res) });
       saveCache();
       again = pending.length > 0;
       if (gap) setTimer(() => reload(), 0);
     } catch (e) {
-      if (!disposed && handleError(e, 'flush', batch) === 'again') again = state.pending.length > 0;
+      // 画面に戻った時に止めた送信は、すぐ送り直す
+      if (mine.restart) again = !disposed && state.pending.length > 0;
+      else if (!disposed && handleError(e, 'flush', batch) === 'again') again = state.pending.length > 0;
     } finally {
+      if (inflight === mine) inflight = null;
       flushing = false;
       if (!disposed) set({ saving: false });
     }
@@ -289,6 +304,30 @@ export function createStore({
     set({ failed });
   }
 
+  // 画面に戻った時・通信が戻った時：未保存があればすぐ送る。長く返事のない送信は捨てて送り直す
+  function kick() {
+    if (disposed || !state.pending.length) return;
+    if (flushing) {
+      if (inflight && inflight.ctrl && !inflight.restart && nowFn() - inflight.startedAt > STALE_MS) {
+        inflight.restart = true;
+        inflight.ctrl.abort();
+      }
+      return;
+    }
+    retryCount = 0;
+    flush();
+  }
+  const doc = win && win.document;
+  const onVisible = () => {
+    if (!doc || doc.visibilityState === 'visible') kick();
+  };
+  if (win && win.addEventListener) {
+    win.addEventListener('online', kick);
+    win.addEventListener('focus', kick);
+    win.addEventListener('pageshow', kick);
+  }
+  if (doc && doc.addEventListener) doc.addEventListener('visibilitychange', onVisible);
+
   // 他のタブで未保存が増えた時に取り込む
   const onStorage = (e) => {
     if (e.key !== key('pending')) return;
@@ -303,7 +342,13 @@ export function createStore({
     if (lockedTimer) clearTimer(lockedTimer);
     retryTimer = null;
     lockedTimer = null;
-    if (win && win.removeEventListener) win.removeEventListener('storage', onStorage);
+    if (win && win.removeEventListener) {
+      win.removeEventListener('storage', onStorage);
+      win.removeEventListener('online', kick);
+      win.removeEventListener('focus', kick);
+      win.removeEventListener('pageshow', kick);
+    }
+    if (doc && doc.removeEventListener) doc.removeEventListener('visibilitychange', onVisible);
     listeners.clear();
   }
 
@@ -316,6 +361,7 @@ export function createStore({
     },
     reload,
     flush,
+    kick,
     add,
     setPass,
     forgetPass,

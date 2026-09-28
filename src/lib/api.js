@@ -10,11 +10,16 @@ export class ApiError extends Error {
   }
 }
 
-export async function callGas(url, body, { timeoutMs = 25000, fetchImpl } = {}) {
+// signal：呼んだ側から止める（画面に戻った時に、止まっていた送信を捨てて送り直す）
+export async function callGas(url, body, { timeoutMs = 25000, fetchImpl, signal } = {}) {
   if (!url) throw new ApiError('nourl');
   const doFetch = fetchImpl || globalThis.fetch.bind(globalThis);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener('abort', () => ctrl.abort(), { once: true });
+  }
   try {
     const res = await doFetch(url, {
       method: 'POST',

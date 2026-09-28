@@ -21,6 +21,9 @@ var HEADER = ['記録日時', '版', '記録番号', '年', '種類', '項目番
 var NCOL = 12;
 var PER_YEAR_KINDS = ['アイスバーグ', 'ブレーキ', '自分軸', '動機'];
 var MAX_BATCH = 500;
+// 送り直しの重なりを確かめる最近の行数（返事が届かずに送り直した行は、この中に入る。
+// 万一重なっても、画面は記録番号で1行にまとめる）
+var DEDUP_WINDOW = 300;
 var MAX_CELL = 20000;
 var MAX_FAILS = 10;
 var LOCK_SECONDS = 1800;
@@ -34,16 +37,19 @@ function doGet() {
 }
 
 function doPost(e) {
+  var t0 = Date.now();
   var req;
   try {
     req = JSON.parse(e.postData.contents);
   } catch (err) {
     return json_({ ok: false, error: 'bad' });
   }
-  var auth = checkAuth_(req || {});
+  // スクリプトのプロパティは1回で読む
+  var props = PropertiesService.getScriptProperties().getProperties();
+  var auth = checkAuth_(req || {}, props.PASSPHRASE);
   if (auth.denied) return json_({ ok: false, error: auth.denied });
 
-  var minVer = Number(prop_('MIN_CLIENT_VERSION') || 0);
+  var minVer = Number(props.MIN_CLIENT_VERSION || 0);
   if (Number(req.clientVersion || 0) < minVer) return json_({ ok: false, error: 'upgrade' });
 
   try {
@@ -53,6 +59,7 @@ function doPost(e) {
     else return json_({ ok: false, error: 'bad' });
     // 合言葉で通った端末には鍵を渡す（次からは鍵で通る）
     if (auth.newKey) out.key = auth.newKey;
+    out.serverMs = Date.now() - t0; // 保存先の中でかかった時間（画面の設定に出す）
     return json_(out);
   } catch (err) {
     console.error(err && err.stack ? err.stack : err);
@@ -65,8 +72,7 @@ function doPost(e) {
 // 鍵で通る端末は、他の人が合言葉をわざと間違えて止めている間も使える（止めるのは合言葉の照合だけ）。
 // 鍵＝端末ごとの番号＋合言葉で作った署名。合言葉を変えると、すべての鍵が使えなくなる
 
-function checkAuth_(req) {
-  var pass = prop_('PASSPHRASE');
+function checkAuth_(req, pass) {
   if (!pass) return { denied: 'setup' };
   if (typeof req.key === 'string' && keyOk_(req.key, pass)) return {};
   var denied = checkPass_(req.pass, pass);
@@ -165,21 +171,20 @@ function append_(rows, known) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) return { ok: false, error: 'busy' };
   try {
-    // 鍵をかけてから、最後の行と記録番号を読む
+    // 鍵をかけてから、最後の行と、最近の行を1回で読む（重なりの確かめ・最後の記録日時・返事に使う）
+    // シートとのやりとりは1回ごとに時間がかかるので、読むのはここと getLastRow だけにする
     var sheet = sheet_();
     var last = sheet.getLastRow();
     var dataCount = Math.max(0, last - 1);
+    var from = Number(known);
+    if (!(from >= 0 && from <= dataCount) || Math.floor(from) !== from) from = 0;
+    var start = Math.max(0, Math.min(from, dataCount - DEDUP_WINDOW));
+    var recent = rowsBetween_(sheet, start, dataCount);
     var existing = {};
-    var lastMs = 0;
-    if (dataCount > 0) {
-      sheet
-        .getRange(2, 3, dataCount, 1)
-        .getValues()
-        .forEach(function (r) {
-          existing[String(r[0])] = true;
-        });
-      lastMs = Date.parse(cellText_(sheet.getRange(last, 1).getValue())) || 0;
-    }
+    recent.forEach(function (r) {
+      existing[r[2]] = true;
+    });
+    var lastMs = recent.length ? Date.parse(recent[recent.length - 1][0]) || 0 : 0;
 
     // もう入っている行（返事が届かずに送り直した行）は足さない。前の年の行を断るのは、新しい行だけ
     var out = [];
@@ -216,10 +221,14 @@ function append_(rows, known) {
       SpreadsheetApp.flush();
     }
 
+    // 返事：known より後の行（読んだ最近の行＋いま足した行）。書いた後に読み直さない
     var total = dataCount + out.length;
-    var from = Number(known);
-    if (!(from >= 0 && from <= dataCount) || Math.floor(from) !== from) from = 0;
-    return { ok: true, appended: out.length, skipped: skipped, from: from, rows: rowsBetween_(sheet, from, total), count: total, serverYear: serverYear };
+    var tail = recent.slice(from - start).concat(
+      out.map(function (r) {
+        return r.slice();
+      }),
+    );
+    return { ok: true, appended: out.length, skipped: skipped, from: from, rows: tail, count: total, serverYear: serverYear };
   } finally {
     lock.releaseLock();
   }
@@ -289,10 +298,6 @@ function sheet_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
   if (!sheet) throw code_('setup');
   return sheet;
-}
-
-function prop_(name) {
-  return PropertiesService.getScriptProperties().getProperty(name);
 }
 
 function jstYear_(d) {

@@ -299,3 +299,75 @@ describe('保存の流れ', () => {
     expect(b.getState().pass).toBe('');
   });
 });
+
+describe('スマホで裏に回った時の送り直し', () => {
+  // 画面・通信の出来事を起こせる作り物の window
+  function fakeWin() {
+    const h = new Map();
+    const doc = { visibilityState: 'visible', addEventListener: (k, fn) => h.set('doc:' + k, fn), removeEventListener: (k) => h.delete('doc:' + k) };
+    return {
+      document: doc,
+      addEventListener: (k, fn) => h.set(k, fn),
+      removeEventListener: (k) => h.delete(k),
+      fire: (k) => h.get(k)?.(),
+      has: (k) => h.has(k),
+    };
+  }
+
+  it('画面に戻った時、止まっていた送信を捨てて、同じ記録番号ですぐ送り直す', async () => {
+    const api = fakeApi();
+    let hang = true;
+    const seen = [];
+    const realAppend = api.append;
+    api.append = vi.fn((url, cred, rows, known, opts) => {
+      seen.push(rows.map((r) => r[2]));
+      if (!hang) return realAppend(url, cred, rows, known);
+      // 返事が来ない送信（裏に回って止まった）。止められたら失敗にする
+      return new Promise((_, reject) => opts.signal.addEventListener('abort', () => reject(new ApiError('timeout'))));
+    });
+    let now = 1000;
+    const win = fakeWin();
+    const s = createStore({ env: 'test', url: 'u', storage: memoryStorage(), api, win, nowFn: () => now, setTimer: () => 1, clearTimer: () => {} });
+    s.setPass('ok');
+    await s.reload();
+    s.add([draft('a')]);
+    await tick();
+    expect(s.getState().saving).toBe(true);
+    // すぐに戻った時は待つ
+    win.document.visibilityState = 'visible';
+    win.fire('doc:visibilitychange');
+    await tick();
+    expect(seen).toHaveLength(1);
+    // 長く返事がない時は送り直す
+    now += 9000;
+    hang = false;
+    win.fire('doc:visibilitychange');
+    await tick();
+    await tick();
+    expect(seen).toHaveLength(2);
+    expect(seen[1]).toEqual(seen[0]);
+    expect(s.getState().pending).toHaveLength(0);
+    expect(s.getState().saving).toBe(false);
+    expect(api.sheet).toHaveLength(1);
+    expect(s.getState().lastSave.ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it('通信が戻った時は、送り直しの待ちを飛ばしてすぐ送る。閉じたら聞くのをやめる', async () => {
+    const api = fakeApi({ fail: [new ApiError('network')] });
+    const win = fakeWin();
+    const timers = [];
+    const s = createStore({ env: 'test', url: 'u', storage: memoryStorage(), api, win, setTimer: (fn, ms) => timers.push(ms), clearTimer: () => {} });
+    s.setPass('ok');
+    await s.reload();
+    s.add([draft('a')]);
+    await tick();
+    expect(timers).toEqual([1000]); // 最初の送り直しは1秒後
+    expect(s.getState().pending).toHaveLength(1);
+    win.fire('online');
+    await tick();
+    expect(s.getState().pending).toHaveLength(0);
+    s.dispose();
+    expect(win.has('online')).toBe(false);
+    expect(win.has('doc:visibilitychange')).toBe(false);
+  });
+});

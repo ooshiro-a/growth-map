@@ -214,4 +214,35 @@ describe('GAS：行を足す', () => {
     env.props.set('MIN_CLIENT_VERSION', '2');
     expect(env.post({ action: 'readAll', pass: P, clientVersion: 1 }).error).toBe('upgrade');
   });
+
+  it('速さ：シートを読むのは getLastRow と最近の行の1回だけ。書いた後に読み直さない', () => {
+    const env = makeEnv();
+    env.post({ action: 'append', pass: P, rows: [row('rtest0001'), row('rtest0002')], known: 0 });
+    env.log.length = 0;
+    const res = env.post({ action: 'append', pass: P, rows: [row('rtest0003')], known: 2 });
+    expect(res.rows.map((r) => r[2])).toEqual(['rtest0003']);
+    expect(env.log.filter((l) => l.startsWith('getValues'))).toHaveLength(1);
+    expect(env.log.filter((l) => l === 'getProperties')).toHaveLength(1);
+    expect(env.log.indexOf('setValues')).toBeGreaterThan(env.log.findIndex((l) => l.startsWith('getValues')));
+    expect(typeof res.serverMs).toBe('number');
+  });
+
+  it('返事の行は、読み直した時と同じ文字（数式に化けやすい文字も）', () => {
+    const env = makeEnv();
+    const tricky = ['=1+1', "'x", '001', '2026-12-06', '{"a":1}'];
+    const res = env.post({ action: 'append', pass: P, rows: tricky.map((t, i) => row(`rtrick${String(i).padStart(3, '0')}`, { text: t })), known: 0 });
+    expect(res.rows).toEqual(env.post({ action: 'readAll', pass: P }).rows);
+  });
+
+  it('重なりは最近の行で確かめる（別の端末の行が間にあっても、送り直しは足さない）', () => {
+    const env = makeEnv();
+    env.post({ action: 'append', pass: P, rows: [row('rtest0001')], known: 0 });
+    for (let i = 0; i < 20; i++) env.post({ action: 'append', pass: P, rows: [row(`rother${String(i).padStart(3, '0')}`)], known: i + 1 });
+    const again = env.post({ action: 'append', pass: P, rows: [row('rtest0001')], known: 21 });
+    expect(again).toMatchObject({ ok: true, appended: 0, skipped: 1, count: 21 });
+    expect(again.rows).toEqual([]);
+    // 画面が古い時は、known より後を全部返す
+    const old = env.post({ action: 'append', pass: P, rows: [row('rtest0100')], known: 19 });
+    expect(old.rows.map((r) => r[2])).toEqual(['rother018', 'rother019', 'rtest0100']);
+  });
 });

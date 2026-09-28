@@ -145,6 +145,12 @@ export function Settings() {
           {st.pending.length ? `／未保存 ${st.pending.length}件` : ''}
           {st.error ? `／${ERROR_TEXT[st.error] || st.error}` : ''}
         </p>
+        {st.lastSave && (
+          <p className="note">
+            最後の保存：{(st.lastSave.ms / 1000).toFixed(1)}秒
+            {st.lastSave.serverMs != null && `（うち保存先の中 ${(st.lastSave.serverMs / 1000).toFixed(1)}秒）`}
+          </p>
+        )}
         <div className="btns">
           <button type="button" className="btn" onClick={() => store.reload()}>
             読み込み直す

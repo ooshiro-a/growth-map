@@ -43,8 +43,11 @@ function SaveStatus() {
   let text = '';
   let full = '';
   let cls = '';
-  if (st.saving) text = '保存中…';
-  else if (st.pending.length) {
+  if (st.saving) {
+    // 書いた内容はもう端末に残っている。届くまで送り直す
+    text = st.pending.length ? `送信中（${st.pending.length}件）` : '送信中…';
+    full = '書いた内容はこの端末に残っています。届くまで送り直します';
+  } else if (st.pending.length) {
     text = `未保存 ${st.pending.length}件`;
     cls = 'warn';
   } else if (st.refreshing) text = '読み込み中…';

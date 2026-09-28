@@ -98,7 +98,15 @@ export function makeGasSim({ pass = 'ひみつの合言葉', maxRows = 1000, now
         removeAll: (ks) => ks.forEach((k) => cache.delete(k)),
       }),
     },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props.get(k) ?? null }) },
+    PropertiesService: {
+      getScriptProperties: () => ({
+        getProperty: (k) => props.get(k) ?? null,
+        getProperties: () => {
+          log.push('getProperties');
+          return Object.fromEntries(props);
+        },
+      }),
+    },
     Utilities: {
       getUuid: () => randomUUID(),
       computeHmacSha256Signature: (value, key) => [...createHmac('sha256', key).update(value, 'utf8').digest()],
