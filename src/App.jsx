@@ -12,6 +12,7 @@ import { AccelScreen } from './screens/AccelScreen.jsx';
 import { BrakeScreen } from './screens/BrakeScreen.jsx';
 import { HomeScreen } from './screens/HomeScreen.jsx';
 import { IcebergScreen } from './screens/IcebergScreen.jsx';
+import { LifeMapScreen } from './screens/LifeMapScreen.jsx';
 import { LongtermScreen } from './screens/LongtermScreen.jsx';
 import { PassphraseScreen } from './screens/PassphraseScreen.jsx';
 import { Placeholder } from './screens/Placeholder.jsx';
@@ -33,7 +34,7 @@ function screenFor(tab, sub, year) {
       if (sub === 'plan') return { title: 'アクションプラン', el: <LongtermScreen part="plan" /> };
       return { title: '振り返り', el: <ReviewScreen /> };
     case 'life':
-      return { title: '人生マップ', el: <Placeholder name="人生マップ" phase={7} /> };
+      return { title: '人生マップ', el: <LifeMapScreen /> };
     case 'timeline':
       return {
         title: '年表',

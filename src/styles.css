@@ -1242,3 +1242,238 @@ a.link-row .note {
 .brake-sort .layer-pick {
   grid-template-columns: 1fr 1fr 0.7fr;
 }
+
+/* 人生マップ（旧マインドマップの形） */
+.map-import {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.map-import .sample {
+  font-size: 12.5px;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.lm-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+.lm-tools .lm-z {
+  min-width: 36px;
+  font-weight: 700;
+}
+.lm-tools .btn:disabled {
+  opacity: 0.4;
+}
+.lm-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--sub);
+}
+.lm-hint {
+  margin: 0 0 6px;
+}
+.lm-wrap {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(42, 39, 34, 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-height: 50vh;
+}
+.lm-map {
+  width: max-content;
+  padding: 22px 60px 90px 14px;
+}
+.lm-branch {
+  position: relative;
+  --c: var(--gold);
+  --cl: rgba(90, 84, 72, 0.45);
+}
+.lm-branch.c0 {
+  --c: var(--shu);
+  --cl: rgba(198, 74, 30, 0.5);
+}
+.lm-branch.c1 {
+  --c: var(--ai);
+  --cl: rgba(35, 98, 143, 0.5);
+}
+.lm-branch.c2 {
+  --c: var(--matsu);
+  --cl: rgba(62, 125, 83, 0.5);
+}
+.lm-branch.c3 {
+  --c: var(--ayame);
+  --cl: rgba(108, 85, 163, 0.5);
+}
+.lm-row {
+  display: flex;
+  align-items: center;
+}
+.lm-kids {
+  display: flex;
+  flex-direction: column;
+}
+.lm-kids > .lm-branch {
+  padding: 4px 0 4px 24px;
+}
+.lm-kids > .lm-branch::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--cl);
+}
+.lm-kids > .lm-branch:first-child::before {
+  top: 50%;
+}
+.lm-kids > .lm-branch:last-child::before {
+  bottom: 50%;
+}
+.lm-kids > .lm-branch:only-child::before {
+  display: none;
+}
+.lm-kids > .lm-branch::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(50% - 1px);
+  width: 24px;
+  border-top: 2px solid var(--cl);
+}
+.lm-stub {
+  width: 16px;
+  height: 2px;
+  flex: none;
+  background: var(--cl);
+}
+.lm-branch.gold > .lm-row > .lm-stub {
+  background: rgba(90, 84, 72, 0.45);
+}
+.lm-node {
+  position: relative;
+  flex: none;
+}
+.lm-text {
+  display: block;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  overflow-wrap: anywhere;
+}
+.lm-root .lm-text {
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 18px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.lm-main .lm-text {
+  background: var(--c);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  max-width: 13em;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.lm-leaf .lm-text {
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  padding: 3px 7px;
+  line-height: 1.4;
+  max-width: 15em;
+  border-bottom: 2px solid var(--c);
+}
+.lm-node.sel .lm-text {
+  box-shadow: 0 0 0 3px rgba(42, 39, 34, 0.22);
+}
+.lm-leaf.sel .lm-text {
+  border-radius: 6px 6px 0 0;
+  background: rgba(42, 39, 34, 0.06);
+}
+/* 削除した枝：灰色で残る（この先の枝もいっしょに） */
+.lm-branch.del {
+  --cl: rgba(168, 162, 152, 0.45);
+}
+.lm-branch.del > .lm-row > .lm-node .lm-text {
+  color: var(--gone);
+  background: #ecebe6;
+  border-bottom-color: #cfcbc2;
+  box-shadow: none;
+  font-weight: 400;
+}
+.lm-branch.del > .lm-row > .lm-node.lm-leaf .lm-text {
+  background: transparent;
+}
+.lm-branch.del > .lm-row > .lm-stub {
+  background: var(--cl);
+}
+/* 日付と「…」：押すと出る（PCはカーソルを合わせても出る） */
+.lm-pop {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 6;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 2px 3px 2px 8px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+.lm-pop .date {
+  font-size: 11px;
+  color: var(--date);
+}
+.lm-node.sel .lm-pop {
+  display: flex;
+}
+@media (hover: hover) {
+  .lm-node:hover .lm-pop {
+    display: flex;
+  }
+}
+.lm-wrap.busy .lm-pop {
+  display: none !important;
+}
+.lm-tg {
+  flex: none;
+  margin-left: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  border: 1.5px solid var(--c);
+  color: var(--c);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.lm-branch.gold > .lm-row > .lm-tg {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.lm-branch.del > .lm-row > .lm-tg {
+  border-color: #cfcbc2;
+  color: var(--gone);
+}

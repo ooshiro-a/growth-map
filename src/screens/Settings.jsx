@@ -8,6 +8,7 @@ import { clockOffset, now } from '../lib/clock.js';
 import { formatJpDate, jstParts } from '../lib/dates.js';
 import { newId } from '../lib/ids.js';
 import { KIND, LAYER, OP, SCHEMA_VERSION } from '../lib/schema.js';
+import { MapImport } from './MapImport.jsx';
 import { SeedImport } from './SeedImport.jsx';
 
 // 往復テストで送る文字（シートで数式・日付・数に化けないか）
@@ -173,7 +174,7 @@ export function Settings() {
           <span>初回の取り込み</span>
         </div>
         <SeedImport />
-        <p className="note">旧マインドマップの取り込みはフェーズ7で作ります</p>
+        <MapImport />
       </section>
 
       {env === 'test' && (
