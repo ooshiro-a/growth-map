@@ -8,6 +8,7 @@ import { currentYear, now, setClockOffset } from './lib/clock.js';
 import { buildModel } from './lib/fold.js';
 import { PER_YEAR_KINDS } from './lib/schema.js';
 import { createStore } from './lib/store.js';
+import { AccelScreen } from './screens/AccelScreen.jsx';
 import { HomeScreen } from './screens/HomeScreen.jsx';
 import { IcebergScreen } from './screens/IcebergScreen.jsx';
 import { LongtermScreen } from './screens/LongtermScreen.jsx';
@@ -24,7 +25,7 @@ function screenFor(tab, sub, year) {
       return { title: `${year}年`, el: <HomeScreen /> };
     case 'map':
       if (sub === 'brake') return { title: `成長の地図 ${year}年`, el: <Placeholder name="ブレーキ" phase={6} /> };
-      if (sub === 'accel') return { title: `成長の地図 ${year}年`, el: <Placeholder name="アクセル" phase={5} /> };
+      if (sub === 'accel') return { title: `成長の地図 ${year}年`, el: <AccelScreen year={year} /> };
       return { title: `成長の地図 ${year}年`, el: <IcebergScreen year={year} /> };
     case 'review':
       if (sub === 'roadmap') return { title: '逆算ロードマップ', el: <LongtermScreen part="roadmap" /> };
