@@ -80,7 +80,8 @@ export function historyText(rec, kind) {
     case OP.EDIT: {
       if (kind === KIND.REVIEW) return rec.text ? `書いた「${rec.text}」` : '空にした';
       const attrs = kind === KIND.LONGTERM ? attrText(rec.extra) : '';
-      return `${opWord(rec, kind)}「${rec.text}」${attrs ? `（${attrs}）` : ''}`;
+      const from = rec.op === OP.ADD && rec.extra.source === 'iceberg' ? 'アイスバーグから' : '';
+      return `${from}${opWord(rec, kind)}「${rec.text}」${attrs ? `（${attrs}）` : ''}`;
     }
     case OP.SCORE:
       if (kind === KIND.ICEBERG) return `採点「${stageName(rec.value)}」`;

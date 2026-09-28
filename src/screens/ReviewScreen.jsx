@@ -45,8 +45,9 @@ function Judge({ goal, locked, onJudge }) {
   );
 }
 
-// 目標の並び（①その年の答え合わせ／③翌年の目標）
-function GoalSection({ num, title, goalYear, judge = false, locked, emptyText, children }) {
+// 目標の並び（①その年の答え合わせ／③翌年の目標／ホームの今年の目標）
+// judge：達成・未達のボタンを出す／tags：答え合わせの札だけ出す（ホーム。変えるのは振り返り）
+export function GoalSection({ num = null, title, goalYear, judge = false, tags = false, locked, emptyText, children }) {
   const { model, write } = useApp();
   const goals = goalsOf(model, goalYear);
   const [dialog, setDialog] = useState(null);
@@ -74,7 +75,7 @@ function GoalSection({ num, title, goalYear, judge = false, locked, emptyText, c
     <section className="list">
       <div className="sec">
         <span>
-          <span className="num">{num}</span>
+          {num != null && <span className="num">{num}</span>}
           {title}
         </span>
         {!locked && <MoreMenu small label={`${title}の操作`} items={[{ label: '目標を追加', onSelect: () => setDialog({ type: 'add' }) }]} />}
@@ -87,7 +88,7 @@ function GoalSection({ num, title, goalYear, judge = false, locked, emptyText, c
           date={dateLine(g)}
           deleted={!!g.deletedRec}
           pending={isPending(g)}
-          aside={judge && !g.deletedRec ? <Judge goal={g} locked={locked} onJudge={onJudge} /> : null}
+          aside={(judge || tags) && !g.deletedRec ? <Judge goal={g} locked={locked || !judge} onJudge={onJudge} /> : null}
           menu={menuFor(g)}
         />
       ))}

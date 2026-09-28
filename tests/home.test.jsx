@@ -1,0 +1,216 @@
+// @vitest-environment happy-dom
+// ホーム（試験データは作り物だけ）
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { useMemo, useState } from 'react';
+import { AppContext } from '../src/app-context.js';
+import { buildModel } from '../src/lib/fold.js';
+import { historyText } from '../src/lib/labels.js';
+import { KIND, LAYER, OP, toRow } from '../src/lib/schema.js';
+import { HomeScreen, principlesOf } from '../src/screens/HomeScreen.jsx';
+import { ids, r, resetNo } from './helpers.js';
+
+afterEach(cleanup);
+beforeEach(resetNo);
+
+const G = KIND.GOAL;
+const P = KIND.PRINCIPLE;
+const I = KIND.ICEBERG;
+
+describe('指標の組み立て', () => {
+  it('年をまたいで続く。並び・削除・アイスバーグから足した履歴', () => {
+    const rows = [
+      r({ kind: P, id: 'np1', op: OP.ADD, text: '作り物の指標1' }),
+      r({ kind: P, id: 'np2', op: OP.ADD, text: '作り物の指標2', extra: { source: 'iceberg' } }),
+      r({ kind: P, id: 'np3', op: OP.ADD, text: '作り物の指標0', extra: { after: '' } }),
+      r({ kind: P, id: 'np1', op: OP.DELETE }),
+    ];
+    const m = buildModel(rows, [], { currentYear: 2028 });
+    const list = principlesOf(m);
+    expect(ids(list)).toEqual(['np3', 'np1', 'np2']);
+    expect(list[1].deletedRec).toBeTruthy();
+    expect(historyText(m.historyOf(P, 'np2')[0], P)).toBe('アイスバーグから追加「作り物の指標2」');
+    expect(historyText(m.historyOf(P, 'np1')[0], P)).toBe('追加「作り物の指標1」');
+  });
+});
+
+// ---------------------------------------------------------------- 画面
+function Harness({ log, currentYear = 2026, initial = [], readOnly = false, children }) {
+  const [rows, setRows] = useState(initial);
+  const model = useMemo(() => buildModel(rows, [], { currentYear }), [rows, currentYear]);
+  const write = (drafts) => {
+    const add = drafts.map((d, i) => toRow({ ...d, at: `2026-09-28T10:00:${String((rows.length + i) % 60).padStart(2, '0')}.000+09:00`, no: `rhome${rows.length + i}xxxx` }));
+    log.push(...drafts);
+    setRows((x) => x.concat(add));
+    return add;
+  };
+  return (
+    <AppContext.Provider value={{ model, write, readOnly, year: currentYear }}>
+      <span id="bar-actions" />
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+const openMenu = (name) => fireEvent.click(screen.getByRole('button', { name }));
+const choose = (label) => fireEvent.click(screen.getByRole('menuitem', { name: label }));
+
+describe('ホームの画面', () => {
+  it('今年の目標：今年の分だけ出す。答え合わせは札だけ（ボタンは出さない）。ここからも足せる', () => {
+    const log = [];
+    const initial = [
+      r({ year: 2026, kind: G, id: 'ng1', op: OP.ADD, text: '作り物の今年の目標' }),
+      r({ year: 2026, kind: G, id: 'ng1', op: OP.ACHIEVE }),
+      r({ year: 2026, kind: G, id: 'ng2', op: OP.ADD, text: '作り物のまだの目標' }),
+      r({ year: 2025, kind: G, id: 'ng3', op: OP.ADD, text: '作り物の去年の目標' }),
+      r({ year: 2027, kind: G, id: 'ng4', op: OP.ADD, text: '作り物の来年の目標' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <HomeScreen />
+      </Harness>,
+    );
+    expect(screen.getByText('作り物の今年の目標')).toBeTruthy();
+    expect(screen.getByText('作り物のまだの目標')).toBeTruthy();
+    expect(screen.queryByText('作り物の去年の目標')).toBeNull();
+    expect(screen.queryByText('作り物の来年の目標')).toBeNull();
+    expect(screen.getByText('達成', { selector: '.judge-tag' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: /答え合わせ/ })).toBeNull();
+
+    openMenu('今年の目標の操作');
+    choose('目標を追加');
+    const dialog = screen.getByRole('dialog', { name: '目標を追加' });
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の足した目標' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '目標', op: '追加', year: 2026, text: '作り物の足した目標' });
+    expect(screen.getByText('作り物の足した目標')).toBeTruthy();
+  });
+
+  it('目標がない時の案内', () => {
+    render(
+      <Harness log={[]}>
+        <HomeScreen />
+      </Harness>,
+    );
+    expect(screen.getByText('まだありません。年末年始に振り返りの③で決めます')).toBeTruthy();
+  });
+
+  it('指標：手で打って足す・この下に足す・編集・削除（灰色）', () => {
+    const log = [];
+    render(
+      <Harness log={log}>
+        <HomeScreen />
+      </Harness>,
+    );
+    openMenu('指標の操作');
+    choose('手で打って追加');
+    let dialog = screen.getByRole('dialog', { name: '指標を追加' });
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の指標A' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '指標', op: '追加', year: '', text: '作り物の指標A' });
+    expect(log.at(-1).extra).toBeUndefined();
+    const idA = log.at(-1).id;
+
+    openMenu('指標の操作');
+    choose('手で打って追加');
+    dialog = screen.getByRole('dialog', { name: '指標を追加' });
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の指標C' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+
+    openMenu('「作り物の指標A」の操作');
+    choose('この下に追加');
+    dialog = screen.getByRole('dialog', { name: '指標を追加' });
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の指標B' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ text: '作り物の指標B', extra: { after: idA } });
+    const texts = () => [...document.querySelectorAll('.home-screen section:nth-of-type(2) .item .tx')].map((x) => x.textContent);
+    expect(texts()).toEqual(['作り物の指標A', '作り物の指標B', '作り物の指標C']);
+
+    openMenu('「作り物の指標B」の操作');
+    choose('編集する');
+    dialog = screen.getByRole('dialog', { name: '指標を編集' });
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の指標B・改' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '指標', op: '修正', year: '', text: '作り物の指標B・改' });
+
+    openMenu('「作り物の指標C」の操作');
+    choose('削除する（灰色で残る）');
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '削除する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '指標', op: '削除' });
+    expect(screen.getByText('作り物の指標C').closest('.item').className).toContain('del');
+    openMenu('「作り物の指標C」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+  });
+
+  it('指標：アイスバーグの「意識・想い・人生哲学」からまとめて選ぶ。入れ済み・削除した言葉・ほかの層は選べない', () => {
+    const log = [];
+    const initial = [
+      r({ year: 2026, kind: I, id: 'ni1', op: OP.ADD, layer: LAYER.MIND, text: '作り物の考え1', value: '2' }),
+      r({ year: 2026, kind: I, id: 'ni2', op: OP.ADD, layer: LAYER.MIND, text: '作り物の考え2', value: '1' }),
+      r({ year: 2026, kind: I, id: 'ni3', op: OP.ADD, layer: LAYER.MIND, text: '作り物の考え3', value: '3' }),
+      r({ year: 2026, kind: I, id: 'ni4', op: OP.ADD, layer: LAYER.MIND, text: '作り物の消した考え', value: '1' }),
+      r({ year: 2026, kind: I, id: 'ni4', op: OP.DELETE }),
+      r({ year: 2026, kind: I, id: 'ni5', op: OP.ADD, layer: LAYER.SKILL, text: '作り物のスキル', value: '1' }),
+      r({ kind: P, id: 'np1', op: OP.ADD, text: '作り物の考え2' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <HomeScreen />
+      </Harness>,
+    );
+    openMenu('指標の操作');
+    choose('アイスバーグから選ぶ');
+    const dialog = screen.getByRole('dialog', { name: 'アイスバーグから選ぶ' });
+    const boxes = within(dialog).getAllByRole('checkbox');
+    expect(boxes.map((b) => b.closest('label').querySelector('.tx').textContent)).toEqual(['作り物の考え1', '作り物の考え2', '作り物の考え3']);
+    expect(boxes[1].disabled).toBe(true);
+    expect(within(dialog).getByText('入れ済み')).toBeTruthy();
+
+    const save = within(dialog).getByRole('button', { name: '追加する' });
+    expect(save.disabled).toBe(true);
+    // 選んだ順ではなく、アイスバーグの順で足す
+    fireEvent.click(boxes[2]);
+    fireEvent.click(boxes[0]);
+    fireEvent.click(within(dialog).getByRole('button', { name: '2つ追加する' }));
+    expect(log.slice(-2)).toMatchObject([
+      { kind: '指標', op: '追加', year: '', text: '作り物の考え1', extra: { source: 'iceberg' } },
+      { kind: '指標', op: '追加', year: '', text: '作り物の考え3', extra: { source: 'iceberg' } },
+    ]);
+    expect(log.at(-1).extra.after).toBeUndefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const texts = [...document.querySelectorAll('.home-screen section:nth-of-type(2) .item .tx')].map((x) => x.textContent);
+    expect(texts).toEqual(['作り物の考え2', '作り物の考え1', '作り物の考え3']);
+
+    // もう一度開くと、足した言葉も入れ済み
+    openMenu('指標の操作');
+    choose('アイスバーグから選ぶ');
+    expect(within(screen.getByRole('dialog')).getAllByText('入れ済み')).toHaveLength(3);
+  });
+
+  it('アイスバーグに言葉がない時の案内', () => {
+    render(
+      <Harness log={[]}>
+        <HomeScreen />
+      </Harness>,
+    );
+    openMenu('指標の操作');
+    choose('アイスバーグから選ぶ');
+    expect(screen.getByText('この年のアイスバーグに「意識・想い・人生哲学」の言葉がありません')).toBeTruthy();
+  });
+
+  it('見るだけの時は「…」に履歴だけ・追加を出さない', () => {
+    const initial = [
+      r({ year: 2026, kind: G, id: 'ng1', op: OP.ADD, text: '作り物の目標' }),
+      r({ kind: P, id: 'np1', op: OP.ADD, text: '作り物の指標' }),
+    ];
+    render(
+      <Harness log={[]} initial={initial} readOnly>
+        <HomeScreen />
+      </Harness>,
+    );
+    expect(screen.queryByRole('button', { name: '今年の目標の操作' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '指標の操作' })).toBeNull();
+    openMenu('「作り物の指標」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+  });
+});

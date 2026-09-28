@@ -8,6 +8,7 @@ import { currentYear, now, setClockOffset } from './lib/clock.js';
 import { buildModel } from './lib/fold.js';
 import { PER_YEAR_KINDS } from './lib/schema.js';
 import { createStore } from './lib/store.js';
+import { HomeScreen } from './screens/HomeScreen.jsx';
 import { IcebergScreen } from './screens/IcebergScreen.jsx';
 import { LongtermScreen } from './screens/LongtermScreen.jsx';
 import { PassphraseScreen } from './screens/PassphraseScreen.jsx';
@@ -20,7 +21,7 @@ const storage = safeStorage();
 function screenFor(tab, sub, year) {
   switch (tab) {
     case 'home':
-      return { title: `${year}年`, el: <Placeholder name="ホーム（今年の目標・指標）" phase={4} /> };
+      return { title: `${year}年`, el: <HomeScreen /> };
     case 'map':
       if (sub === 'brake') return { title: `成長の地図 ${year}年`, el: <Placeholder name="ブレーキ" phase={6} /> };
       if (sub === 'accel') return { title: `成長の地図 ${year}年`, el: <Placeholder name="アクセル" phase={5} /> };
@@ -39,7 +40,7 @@ function screenFor(tab, sub, year) {
     case 'settings':
       return { title: '設定', el: <Settings /> };
     default:
-      return { title: `${year}年`, el: <Placeholder name="ホーム" phase={4} /> };
+      return { title: `${year}年`, el: <HomeScreen /> };
   }
 }
 
