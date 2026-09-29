@@ -8,6 +8,9 @@ export const BRAKE_KIND_NAME = { [LAYER.WORRY]: '悩みブレーキ', [LAYER.CHI
 export const PLACE = { fork: '分かれ道', road: '決めた道の上' };
 export const CONTROL = { can: '変えられる', cannot: '変えられない' };
 
+// 悩みを解くためにやること（悩み・大きな子ども両方。空でもよい）
+export const PLAN_LABEL = 'アクションプラン';
+
 export const RELEASED = 'released';
 export const FACING = 'facing';
 // 状態がない時は向き合い中
@@ -17,6 +20,13 @@ export const isReleased = (e) => !!e && e.value === RELEASED;
 export function sortText(attrs) {
   if (!attrs) return '';
   return [PLACE[attrs.place], CONTROL[attrs.control]].filter(Boolean).join('／');
+}
+
+// 履歴の属性：「決めた道の上／変えられる／アクションプラン：…」（空にした修正は「アクションプランを消した」）
+export function brakeAttrText(attrs) {
+  if (!attrs) return '';
+  const plan = attrs.plan ? `${PLAN_LABEL}：${attrs.plan}` : attrs.plan === '' ? `${PLAN_LABEL}を消した` : '';
+  return [sortText(attrs), plan].filter(Boolean).join('／');
 }
 
 // 1年分：欄ごとの項目（削除した項目も元の位置に灰色で残る）と、この年に外せた数

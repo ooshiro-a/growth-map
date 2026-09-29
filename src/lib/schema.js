@@ -11,7 +11,7 @@ export const COLUMNS = [
   '層・区分', // I
   '文言', //     J
   '状態・点数', // K
-  '付記', //     L: JSON（after / undo / at / source / place / control / when / freq / tactic）
+  '付記', //     L: JSON（after / undo / at / source / place / control / plan / when / freq / tactic）
 ];
 export const NCOL = COLUMNS.length;
 
@@ -91,9 +91,9 @@ export const motiveQuadrantId = (q) => `mv-${q}`;
 export const reviewId = (year, layer) => `rv-${year}-${layer}`;
 
 // 付記に書いてよい鍵
-export const EXTRA_KEYS = ['after', 'undo', 'at', 'source', 'place', 'control', 'when', 'freq', 'tactic'];
+export const EXTRA_KEYS = ['after', 'undo', 'at', 'source', 'place', 'control', 'plan', 'when', 'freq', 'tactic'];
 // 修正で書き換える属性（after / undo / at / source は修正では変えない）
-export const ATTR_KEYS = ['place', 'control', 'when', 'freq', 'tactic'];
+export const ATTR_KEYS = ['place', 'control', 'plan', 'when', 'freq', 'tactic'];
 
 export function parseExtra(s) {
   if (s == null || s === '') return {};

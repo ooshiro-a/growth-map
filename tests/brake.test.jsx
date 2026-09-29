@@ -216,6 +216,117 @@ describe('ブレーキの画面', () => {
     expect(within(h).getByText(/修正「作り物の子ども・改」/)).toBeTruthy();
   });
 
+  it('アクションプラン：付けて足す・だけ変える・空にする・「…」から書く', () => {
+    const log = [];
+    render(
+      <Harness log={log}>
+        <BrakeScreen year={2026} />
+      </Harness>,
+    );
+    const planBox = (d) => within(d).getByRole('textbox', { name: /^アクションプラン/ });
+    const planOf = (text) => screen.getByText(text).closest('.item').querySelector('.bplan')?.textContent ?? null;
+
+    // 悩み：仕分けとアクションプラン（改行もそのまま）
+    openMenu('悩みブレーキの操作');
+    choose('追加する');
+    let d = dlg('悩みブレーキを追加');
+    type(d, '作り物の悩みP');
+    pick(d, '決めた道の上');
+    fireEvent.change(planBox(d), { target: { value: '  作り物の手1\n作り物の手2  ' } });
+    press(d, '追加する');
+    expect(log.at(-1)).toMatchObject({ op: '追加', layer: W, text: '作り物の悩みP', extra: { place: 'road', plan: '作り物の手1\n作り物の手2' } });
+    expect(planOf('作り物の悩みP')).toBe('アクションプラン作り物の手1\n作り物の手2');
+    const idP = log.at(-1).id;
+
+    // 大きな子ども：アクションプランだけ
+    openMenu('大きな子どもブレーキの操作');
+    choose('追加する');
+    d = dlg('大きな子どもブレーキを追加');
+    type(d, '作り物の子どもP');
+    fireEvent.change(planBox(d), { target: { value: '作り物の子どもの手' } });
+    press(d, '追加する');
+    expect(log.at(-1)).toMatchObject({ layer: CH, extra: { plan: '作り物の子どもの手' } });
+    expect(log.at(-1).extra.place).toBeUndefined();
+    expect(planOf('作り物の子どもP')).toBe('アクションプラン作り物の子どもの手');
+
+    // 書いていなければ出さない。「…」の並び
+    openMenu('悩みブレーキの操作');
+    choose('追加する');
+    d = dlg('悩みブレーキを追加');
+    type(d, '作り物の悩みQ');
+    press(d, '追加する');
+    expect(log.at(-1).extra).toBeUndefined();
+    expect(planOf('作り物の悩みQ')).toBeNull();
+    openMenu('「作り物の悩みQ」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
+      '編集する',
+      'アクションプランを書く',
+      '「外せた」にする',
+      'この下に追加',
+      '削除する（灰色で残る）',
+      '履歴を見る',
+      '完全に削除する',
+    ]);
+    // 「アクションプランを書く」：アクションプランの欄に入った状態で開く
+    choose('アクションプランを書く');
+    d = dlg('アクションプラン');
+    expect(document.activeElement).toBe(planBox(d));
+    expect(within(d).getByRole('button', { name: '保存する' }).disabled).toBe(true);
+    fireEvent.change(planBox(d), { target: { value: '作り物の新しい手' } });
+    press(d, '保存する');
+    // 文言と、変えたアクションプランだけ書く
+    expect(log.at(-1)).toEqual({ year: 2026, kind: 'ブレーキ', id: log.at(-1).id, op: '修正', text: '作り物の悩みQ', extra: { plan: '作り物の新しい手' } });
+    expect(planOf('作り物の悩みQ')).toBe('アクションプラン作り物の新しい手');
+    openMenu('「作り物の悩みQ」の操作');
+    expect(screen.getAllByRole('menuitem')[1].textContent).toBe('アクションプランを直す');
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    // 編集で空にする → 空で書き、表示が消える。仕分けは変えていないので書かない
+    openMenu('「作り物の悩みP」の操作');
+    choose('編集する');
+    d = dlg('編集する');
+    expect(planBox(d).value).toBe('作り物の手1\n作り物の手2');
+    fireEvent.change(planBox(d), { target: { value: '   ' } });
+    press(d, '保存する');
+    expect(log.at(-1)).toEqual({ year: 2026, kind: 'ブレーキ', id: idP, op: '修正', text: '作り物の悩みP', extra: { plan: '' } });
+    expect(planOf('作り物の悩みP')).toBeNull();
+    expect(tagsOf('作り物の悩みP')).toEqual(['決めた道の上', '向き合い中']);
+  });
+
+  it('アクションプランは翌年に引き継ぎ、履歴に残る。前の年は見るだけで出る', () => {
+    const initial = [
+      add(2025, 'nb1', W, '作り物の悩み', { place: 'road', control: 'can', plan: '作り物の手' }),
+      r({ year: 2025, kind: B, id: 'nb1', op: OP.EDIT, text: '作り物の悩み', extra: { plan: '作り物の手・改' } }),
+      add(2025, 'nb2', CH, '作り物の外せた子ども', { plan: '作り物の子どもの手' }),
+      status(2025, 'nb2', 'released'),
+      add(2025, 'nb3', CH, '作り物の子ども', { plan: '作り物の消す手' }),
+      r({ year: 2025, kind: B, id: 'nb3', op: OP.EDIT, text: '作り物の子ども', extra: { plan: '' } }),
+    ];
+    const m = buildModel(initial, [], { currentYear: 2026 });
+    expect(m.historyOf(B, 'nb1').map((x) => historyText(x, B))).toEqual([
+      '追加「作り物の悩み」（決めた道の上／変えられる／アクションプラン：作り物の手）',
+      '修正「作り物の悩み」（アクションプラン：作り物の手・改）',
+    ]);
+    expect(m.historyOf(B, 'nb3').map((x) => historyText(x, B))).toEqual([
+      '追加「作り物の子ども」（アクションプラン：作り物の消す手）',
+      '修正「作り物の子ども」（アクションプランを消した）',
+    ]);
+    const y26 = brakeYear(m, 2026);
+    expect(y26.groups[0].items[0].attrs).toEqual({ place: 'road', control: 'can', plan: '作り物の手・改' });
+    // 外せた子どもは引き継がない。消したアクションプランは空のまま
+    expect(ids(y26.groups[1].items)).toEqual(['nb3']);
+    expect(y26.groups[1].items[0].attrs.plan).toBe('');
+
+    render(
+      <Harness log={[]} initial={initial}>
+        <BrakeScreen year={2025} />
+      </Harness>,
+    );
+    expect(screen.getByText('作り物の外せた子ども').closest('.item').querySelector('.bplan').textContent).toBe('アクションプラン作り物の子どもの手');
+    openMenu('「作り物の悩み」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+  });
+
   it('前の年は見るだけ。外せたブレーキはその年に残り、今年には出ない', () => {
     const initial = [add(2025, 'nb1', W, '作り物の外せた悩み', { place: 'fork' }), status(2025, 'nb1', 'released'), add(2025, 'nb2', CH, '作り物の続く子ども')];
     render(

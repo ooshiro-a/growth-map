@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../app-context.js';
 import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
@@ -6,7 +6,7 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
-import { BRAKE_KINDS, BRAKE_KIND_NAME, CONTROL, FACING, PLACE, RELEASED, brakeYear, isReleased } from '../lib/brake.js';
+import { BRAKE_KINDS, BRAKE_KIND_NAME, CONTROL, FACING, PLACE, PLAN_LABEL, RELEASED, brakeYear, isReleased } from '../lib/brake.js';
 import { newId } from '../lib/ids.js';
 import { BRAKE_STATUS, dateLine } from '../lib/labels.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
@@ -35,21 +35,31 @@ function Pick({ label, options, value, onChange, wideFirst = false }) {
   );
 }
 
-// 足す・直す：文言と、悩みなら2つの仕分け（「あとで」も選べる）
+// 足す・直す：文言と、悩みなら2つの仕分け（「あとで」も選べる）、アクションプラン（空でもよい）
 // pickKind：右上の「＋追加」の時だけ、悩み／大きな子どもを選ぶ
-function BrakeDialog({ title, saveLabel = '保存する', pickKind = false, initial, onSave, onClose }) {
+// focusPlan：「…」の「アクションプランを書く」から開いた時は、アクションプランの欄に入る
+function BrakeDialog({ title, saveLabel = '保存する', pickKind = false, focusPlan = false, initial, onSave, onClose }) {
   const [kind, setKind] = useState(initial.kind);
   const [text, setText] = useState(initial.text || '');
   const [place, setPlace] = useState(initial.place || LATER);
   const [control, setControl] = useState(initial.control || LATER);
+  const [plan, setPlan] = useState(initial.plan || '');
+  const planRef = useRef(null);
+  // 小窓（Modal）が最初の欄に入った後に動く
+  useEffect(() => {
+    if (focusPlan && planRef.current) planRef.current.focus();
+  }, [focusPlan]);
   const clean = text.trim();
+  const cleanPlan = plan.trim();
   const worry = kind === LAYER.WORRY;
   const changed =
-    clean !== (initial.text || '').trim() || (worry && (place !== (initial.place || LATER) || control !== (initial.control || LATER)));
+    clean !== (initial.text || '').trim() ||
+    cleanPlan !== (initial.plan || '').trim() ||
+    (worry && (place !== (initial.place || LATER) || control !== (initial.control || LATER)));
   const canSave = !!clean && changed;
   const save = () => {
     if (!canSave) return;
-    if (onSave({ kind, text: clean, place: worry ? place : LATER, control: worry ? control : LATER }) === false) return;
+    if (onSave({ kind, text: clean, place: worry ? place : LATER, control: worry ? control : LATER, plan: cleanPlan }) === false) return;
     onClose();
   };
   return (
@@ -78,6 +88,21 @@ function BrakeDialog({ title, saveLabel = '保存する', pickKind = false, init
           <Pick label="自分で変えられるか" options={[...Object.entries(CONTROL), [LATER, 'あとで']]} value={control} onChange={setControl} />
         </div>
       )}
+      <label className="fld brake-plan-fld">
+        <span className="lbl">
+          {PLAN_LABEL}
+          <small>（空でもよい）</small>
+        </span>
+        <textarea
+          ref={planRef}
+          className="field"
+          rows={3}
+          maxLength={2000}
+          value={plan}
+          placeholder="解くためにやること"
+          onChange={(e) => setPlan(e.target.value)}
+        />
+      </label>
     </Modal>
   );
 }
@@ -91,6 +116,21 @@ function Tags({ e }) {
       {CONTROL[e.attrs.control] && <span className="bchip">{CONTROL[e.attrs.control]}</span>}
       <span className={`bchip ${released ? 'released' : 'facing'}`}>{BRAKE_STATUS[released ? RELEASED : FACING]}</span>
     </span>
+  );
+}
+
+// 札の下：アクションプラン（書いてある時だけ。改行はそのまま）
+function Sub({ e }) {
+  return (
+    <>
+      <Tags e={e} />
+      {e.attrs.plan && (
+        <div className="bplan">
+          <span className="bplan-h">{PLAN_LABEL}</span>
+          {e.attrs.plan}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -109,6 +149,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
       if (vals.place) extra.place = vals.place;
       if (vals.control) extra.control = vals.control;
     }
+    if (vals.plan) extra.plan = vals.plan;
     if (after !== undefined) extra.after = after;
     return ok(
       write([
@@ -125,13 +166,14 @@ export function BrakeScreen({ year, viewOnly = false }) {
       ]),
     );
   };
-  // 修正：文言と、変えた仕分けだけ（「あとで」に戻した時は空で書く）
+  // 修正：文言と、変えた仕分け・アクションプランだけ（「あとで」に戻した時・空にした時は空で書く）
   const edit = (e, vals) => {
     const extra = {};
     if (e.layer === LAYER.WORRY) {
       if (vals.place !== (e.attrs.place || LATER)) extra.place = vals.place;
       if (vals.control !== (e.attrs.control || LATER)) extra.control = vals.control;
     }
+    if (vals.plan !== (e.attrs.plan || '')) extra.plan = vals.plan;
     return ok(write([{ year, kind: B, id: e.id, op: OP.EDIT, text: vals.text, extra: Object.keys(extra).length ? extra : undefined }]));
   };
   const setStatus = (e, value) => ok(write([{ year, kind: B, id: e.id, op: OP.STATUS, value }]));
@@ -147,6 +189,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
         ]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
+          { label: e.attrs.plan ? `${PLAN_LABEL}を直す` : `${PLAN_LABEL}を書く`, onSelect: () => setDialog({ type: 'edit', e, focusPlan: true }) },
           isReleased(e)
             ? { label: '「向き合い中」に戻す', onSelect: () => setStatus(e, FACING) }
             : { label: '「外せた」にする', onSelect: () => setStatus(e, RELEASED) },
@@ -184,7 +227,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
               key={e.id}
               className="brake-item"
               text={e.text}
-              sub={<Tags e={e} />}
+              sub={<Sub e={e} />}
               date={dateLine(e, { perYear: true })}
               deleted={!!e.deletedRec}
               pending={isPending(e)}
@@ -209,8 +252,9 @@ export function BrakeScreen({ year, viewOnly = false }) {
       )}
       {dialog?.type === 'edit' && (
         <BrakeDialog
-          title="編集する"
-          initial={{ kind: dialog.e.layer, text: dialog.e.text, place: dialog.e.attrs.place, control: dialog.e.attrs.control }}
+          title={dialog.focusPlan ? PLAN_LABEL : '編集する'}
+          focusPlan={!!dialog.focusPlan}
+          initial={{ kind: dialog.e.layer, text: dialog.e.text, place: dialog.e.attrs.place, control: dialog.e.attrs.control, plan: dialog.e.attrs.plan }}
           onClose={close}
           onSave={(v) => edit(dialog.e, v)}
         />

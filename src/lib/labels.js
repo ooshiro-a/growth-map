@@ -1,5 +1,5 @@
 // 日付の小さな表示・履歴の文言
-import { sortText } from './brake.js';
+import { brakeAttrText } from './brake.js';
 import { formatJpDate } from './dates.js';
 import { KIND, OP } from './schema.js';
 
@@ -80,7 +80,7 @@ export function historyText(rec, kind) {
     case OP.ADD:
     case OP.EDIT: {
       if (kind === KIND.REVIEW) return rec.text ? `書いた「${rec.text}」` : '空にした';
-      const attrs = kind === KIND.LONGTERM ? attrText(rec.extra) : kind === KIND.BRAKE ? sortText(rec.extra) : '';
+      const attrs = kind === KIND.LONGTERM ? attrText(rec.extra) : kind === KIND.BRAKE ? brakeAttrText(rec.extra) : '';
       const from = rec.op !== OP.ADD ? '' : rec.extra.source === 'iceberg' ? 'アイスバーグから' : rec.extra.source === 'mindmap' ? '旧マップから' : '';
       return `${from}${opWord(rec, kind)}「${rec.text}」${attrs ? `（${attrs}）` : ''}`;
     }
