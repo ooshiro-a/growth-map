@@ -246,3 +246,119 @@ describe('GAS：行を足す', () => {
     expect(old.rows.map((r) => r[2])).toEqual(['rother018', 'rother019', 'rtest0100']);
   });
 });
+
+describe('GAS：控えの複製', () => {
+  const P = 'ひみつの合言葉';
+  const at = (y, m, d, h = 3) => Date.UTC(y, m - 1, d, h - 9, 10, 0); // 日本時間
+
+  it('シートと同じフォルダに「〇〇の控え」を作り、records を写した控えを置く。最後の控えを画面に返す', () => {
+    const env = makeEnv({ nowMs: at(2026, 10, 1) });
+    env.post({ action: 'append', pass: P, rows: [row('rtest0001', { text: '=1+1' }), row('rtest0002', { text: "'x" })], known: 0 });
+    expect(env.post({ action: 'readAll', pass: P }).backup).toBeNull();
+
+    expect(env.ctx.backupNow()).toBe('控えを作りました：成長の地図DB-テスト_控え_2026-10-01（2行）');
+    const folder = [...env.drive.folders.values()].find((f) => f.name === '成長の地図DB-テストの控え');
+    expect(folder.parent).toBe(env.drive.home);
+    expect(env.props.get('BACKUP_FOLDER_ID')).toBe(folder.id);
+    const copies = [...env.drive.files.values()].filter((f) => f.ss);
+    expect(copies).toHaveLength(1);
+    expect(copies[0]).toMatchObject({ name: '成長の地図DB-テスト_控え_2026-10-01', parent: folder.id });
+    // 控えの中は records だけ。元と同じ文字
+    expect(copies[0].ss.sheets.map((s) => s.name)).toEqual(['records']);
+    expect(copies[0].ss.sheets[0].rows).toEqual(env.data);
+    // 元のシートはそのまま（書き換え・削除なし）。写す間は鍵をかける
+    expect(env.data).toHaveLength(3);
+    const i = env.log.indexOf('copyTo');
+    expect(env.log.lastIndexOf('lock', i)).toBeGreaterThan(env.log.lastIndexOf('unlock', i));
+
+    expect(env.post({ action: 'readAll', pass: P }).backup).toEqual({ at: '2026-10-01T03:10:00.000+09:00', rows: 2 });
+  });
+
+  it('同じ日は2回作らない。次の月は同じフォルダに足す（古い控えは消さない）', () => {
+    const env = makeEnv({ nowMs: at(2026, 10, 1) });
+    env.ctx.backupNow();
+    expect(env.ctx.backupNow()).toBe('今日の控えはもうあります：成長の地図DB-テスト_控え_2026-10-01');
+    env.post({ action: 'append', pass: P, rows: [row('rtest0001')], known: 0 });
+    env.setClock(at(2026, 11, 1));
+    expect(env.ctx.backupNow()).toBe('控えを作りました：成長の地図DB-テスト_控え_2026-11-01（1行）');
+    const copies = [...env.drive.files.values()].filter((f) => f.ss);
+    expect(copies.map((c) => c.name)).toEqual(['成長の地図DB-テスト_控え_2026-10-01', '成長の地図DB-テスト_控え_2026-11-01']);
+    expect(new Set(copies.map((c) => c.parent)).size).toBe(1);
+    expect([...env.drive.folders.values()].filter((f) => f.name.endsWith('の控え'))).toHaveLength(1);
+  });
+
+  it('控えフォルダがごみ箱にあれば作り直す', () => {
+    const env = makeEnv({ nowMs: at(2026, 10, 1) });
+    env.ctx.backupNow();
+    env.drive.folders.get(env.props.get('BACKUP_FOLDER_ID')).trashed = true;
+    env.setClock(at(2026, 11, 1));
+    env.ctx.backupNow();
+    const live = [...env.drive.folders.values()].filter((f) => f.name.endsWith('の控え') && !f.trashed);
+    expect(live).toHaveLength(1);
+    expect(env.props.get('BACKUP_FOLDER_ID')).toBe(live[0].id);
+  });
+
+  it('シートがなければ setup（控えは作らない）', () => {
+    const env = makeEnv();
+    env.ctx.SpreadsheetApp.getActiveSpreadsheet().getSheetByName = () => null;
+    expect(() => env.ctx.backupNow()).toThrow('setup');
+    expect([...env.drive.files.values()].filter((f) => f.ss)).toHaveLength(0);
+  });
+
+  it('画面の読み書きでは控えを作らない（控えは時間指定と手で実行した時だけ）', () => {
+    const env = makeEnv();
+    env.post({ action: 'append', pass: P, rows: [row('rtest0001')], known: 0 });
+    env.post({ action: 'readAll', pass: P });
+    expect(env.log).not.toContain('create');
+    expect(env.drive.folders.size).toBe(2);
+  });
+});
+
+describe('GAS：時間指定と12月のお知らせ', () => {
+  const P = 'ひみつの合言葉';
+  const at = (y, m, d, h = 9) => Date.UTC(y, m - 1, d, h - 9, 5, 0);
+
+  it('setupSchedule：毎月1日3時台の控えと、毎月25日9時台のお知らせを作り、控えを1つ作る。何回実行しても2つだけ', () => {
+    const env = makeEnv({ nowMs: at(2026, 9, 29) });
+    env.triggers.push({ handler: 'ほかの仕組み' });
+    expect(env.ctx.setupSchedule()).toMatch(/^時間指定を作りました.*控えを作りました：成長の地図DB-テスト_控え_2026-09-29/);
+    env.ctx.setupSchedule();
+    expect(env.triggers).toEqual([
+      { handler: 'ほかの仕組み' },
+      { handler: 'backupNow', monthDay: 1, hour: 3 },
+      { handler: 'decemberNotice', monthDay: 25, hour: 9 },
+    ]);
+    expect(env.ctx.stopSchedule()).toBe('時間指定を2個消しました');
+    expect(env.triggers).toEqual([{ handler: 'ほかの仕組み' }]);
+  });
+
+  it('12月だけ送る。同じ年は1回だけ。次の年はまた送る', () => {
+    const env = makeEnv({ nowMs: at(2026, 11, 25) });
+    expect(env.ctx.decemberNotice()).toBe('12月ではないので送りません');
+    expect(env.mails).toHaveLength(0);
+
+    env.setClock(at(2026, 12, 25));
+    expect(env.ctx.decemberNotice()).toBe('2026年のお知らせを送りました');
+    expect(env.ctx.decemberNotice()).toBe('2026年のお知らせは送ってあります');
+    expect(env.mails).toHaveLength(1);
+    expect(env.mails[0]).toMatchObject({ to: 'owner@example.com', subject: '成長の地図：振り返りの時期です', name: '成長の地図' });
+    expect(env.mails[0].body).toContain('https://ooshiro-a.github.io/growth-map/#/review');
+
+    env.setClock(at(2027, 12, 25));
+    env.ctx.decemberNotice();
+    expect(env.mails).toHaveLength(2);
+  });
+
+  it('宛先は NOTIFY_EMAIL があればそちら。本文に記録の中身は入れず、最後の控えを添える。試しは件名に印', () => {
+    const env = makeEnv({ nowMs: at(2026, 12, 1, 3) });
+    env.post({ action: 'append', pass: P, rows: [row('rtest0001', { text: '作り物の秘密の言葉' })], known: 0 });
+    env.ctx.backupNow();
+    env.props.set('NOTIFY_EMAIL', 'notice@example.com');
+    expect(env.ctx.testNotice()).toBe('試しのお知らせを送りました');
+    const m = env.mails[0];
+    expect(m).toMatchObject({ to: 'notice@example.com', subject: '（試し）成長の地図：振り返りの時期です' });
+    expect(m.body).toContain('最後の控え：2026年12月1日（1行）');
+    expect(m.body).not.toContain('作り物の秘密の言葉');
+    expect(env.props.get('NOTICE_SENT')).toBeUndefined();
+  });
+});

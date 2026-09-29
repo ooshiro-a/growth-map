@@ -1,16 +1,19 @@
 /**
  * 成長の地図 GAS（スプレッドシートに付いたスクリプト）
  *
- * @OnlyCurrentDoc
- * （許可はこのスプレッドシートだけ。ほかのシートには触れない）
+ * 画面（doPost）からすることは2つだけ：「行を足す」「全部読む」。行の書き換え・削除はしない。
+ * 時間指定からすること（setupSchedule で作る）：毎月の控えの複製・12月のお知らせのメール
  *
- * することは2つだけ：「行を足す」「全部読む」。行の書き換え・削除はしない。
+ * 許可：このスプレッドシート／新しいスプレッドシートを作る（控え）／ドライブ（控えフォルダ）／
+ *       自分宛てのメール／時間指定。ほかのファイルは読まない・変えない
  *
  * スクリプトのプロパティ（プロジェクトの設定 → スクリプト プロパティ）
  *   PASSPHRASE          合言葉（必須。コードには書かない。変えると、端末の鍵もすべて使えなくなる）
  *   MIN_CLIENT_VERSION  これより古い画面からの読み書きを断る（任意）
- *   BACKUP_FOLDER_ID    控えフォルダ（フェーズ9）
- *   NOTIFY_EMAIL        12月のお知らせの宛先（フェーズ9）
+ *   NOTIFY_EMAIL        12月のお知らせの宛先（任意。なければ自分＝このスクリプトを動かすアカウント）
+ *   BACKUP_FOLDER_ID    控えフォルダ（最初の控えの時に自動で入る。シートと同じフォルダの「〇〇の控え」）
+ *   LAST_BACKUP         最後の控え（自動で入る。画面の設定に出す）
+ *   NOTICE_SENT         お知らせを送った年（自動で入る。同じ年に2回送らない）
  *
  * デプロイ：ウェブアプリ／次のユーザーとして実行＝自分／アクセスできるユーザー＝全員
  * 更新する時は「デプロイを管理」→ 同じデプロイを編集 →「新しいバージョン」（URL を変えない）
@@ -54,7 +57,10 @@ function doPost(e) {
 
   try {
     var out;
-    if (req.action === 'readAll') out = readAll_();
+    if (req.action === 'readAll') {
+      out = readAll_();
+      out.backup = backupInfo_(props.LAST_BACKUP);
+    }
     else if (req.action === 'append') out = append_(req.rows, req.known);
     else return json_({ ok: false, error: 'bad' });
     // 合言葉で通った端末には鍵を渡す（次からは鍵で通る）
@@ -290,6 +296,162 @@ function setup() {
   var protections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
   if (!protections.length) sheet.protect().setDescription('記録は足すだけ（手で直さない）').setWarningOnly(true);
   return '準備ができました：' + SHEET_NAME;
+}
+
+// ------------------------------------------------------------ 控えの複製・12月のお知らせ
+// 時間指定から動く（画面の doPost からは呼ばない）。エディタから手で実行してもよい
+//   setupSchedule  時間指定を作り直し、控えを1つ作る（最初に1回。本番で行う）
+//   stopSchedule   時間指定を消す
+//   backupNow      控えを今作る（毎月1日の時間指定もこれを動かす）
+//   testNotice     お知らせのメールを今送る（件名に「試し」）
+
+var APP_URL = 'https://ooshiro-a.github.io/growth-map/';
+var BACKUP_DAY = 1; // 毎月1日の
+var BACKUP_HOUR = 3; // 3時台
+var NOTICE_MONTH = 12;
+var NOTICE_DAY = 25; // 12月25日の
+var NOTICE_HOUR = 9; // 9時台
+var SCHEDULED = ['backupNow', 'decemberNotice'];
+
+function setupSchedule() {
+  stopSchedule();
+  ScriptApp.newTrigger('backupNow').timeBased().onMonthDay(BACKUP_DAY).atHour(BACKUP_HOUR).create();
+  // 時間指定は「毎年」を作れないので、毎月25日に動かし、12月の時だけ送る
+  ScriptApp.newTrigger('decemberNotice').timeBased().onMonthDay(NOTICE_DAY).atHour(NOTICE_HOUR).create();
+  var made = backupNow();
+  return '時間指定を作りました（控え：毎月' + BACKUP_DAY + '日' + BACKUP_HOUR + '時台／お知らせ：毎年' + NOTICE_MONTH + '月' + NOTICE_DAY + '日' + NOTICE_HOUR + '時台）。' + made;
+}
+
+function stopSchedule() {
+  var n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (SCHEDULED.indexOf(t.getHandlerFunction()) >= 0) {
+      ScriptApp.deleteTrigger(t);
+      n++;
+    }
+  });
+  return '時間指定を' + n + '個消しました';
+}
+
+// シート records を新しいスプレッドシートに写し、控えフォルダに置く（古い控えは消さない）
+function backupNow() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = sheet_();
+  var props = PropertiesService.getScriptProperties();
+  var folder = backupFolder_(ss, props);
+  var now = new Date();
+  var name = ss.getName() + '_控え_' + Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
+  var same = folder.getFilesByName(name);
+  while (same.hasNext()) {
+    if (!same.next().isTrashed()) return '今日の控えはもうあります：' + name;
+  }
+
+  var copy = SpreadsheetApp.create(name);
+  var file = DriveApp.getFileById(copy.getId());
+  file.moveTo(folder);
+  // 写している間に行が足されないように、行を足す時と同じ鍵をかける
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw code_('busy');
+  var rows;
+  try {
+    rows = Math.max(0, sheet.getLastRow() - 1);
+    var copied = sheet.copyTo(copy);
+    copied.setName(SHEET_NAME);
+  } finally {
+    lock.releaseLock();
+  }
+  // 最初からある空のシートを外す（控えの中だけ。元のシートには触れない）
+  copy.getSheets().forEach(function (s) {
+    if (s.getSheetId() !== copied.getSheetId()) copy.deleteSheet(s);
+  });
+  var got = Math.max(0, copied.getLastRow() - 1);
+  if (got !== rows) throw new Error('控えの行数が合いません（元 ' + rows + '行・控え ' + got + '行）：' + name);
+
+  props.setProperty('LAST_BACKUP', JSON.stringify({ at: Utilities.formatDate(now, TZ, "yyyy-MM-dd'T'HH:mm:ss.SSS'+09:00'"), rows: rows, name: name }));
+  return '控えを作りました：' + name + '（' + rows + '行）';
+}
+
+// 控えフォルダ：BACKUP_FOLDER_ID。なければシートと同じフォルダに「〇〇の控え」を作る
+function backupFolder_(ss, props) {
+  var id = props.getProperty('BACKUP_FOLDER_ID');
+  if (id) {
+    try {
+      var saved = DriveApp.getFolderById(id);
+      if (!saved.isTrashed()) return saved;
+    } catch (err) {
+      console.warn('BACKUP_FOLDER_ID のフォルダが開けないので、作り直します');
+    }
+  }
+  var parents = DriveApp.getFileById(ss.getId()).getParents();
+  var parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+  var folderName = ss.getName() + 'の控え';
+  var folder = null;
+  var found = parent.getFoldersByName(folderName);
+  while (!folder && found.hasNext()) {
+    var f = found.next();
+    if (!f.isTrashed()) folder = f;
+  }
+  if (!folder) folder = parent.createFolder(folderName);
+  props.setProperty('BACKUP_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+// 画面に返す最後の控え（日時と行数だけ）
+function backupInfo_(text) {
+  if (!text) return null;
+  try {
+    var b = JSON.parse(text);
+    return b && typeof b.at === 'string' ? { at: b.at, rows: Number(b.rows) || 0 } : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+// 毎月25日に動く。12月の時だけ送る（同じ年に2回送らない）
+function decemberNotice() {
+  var now = new Date();
+  if (Number(Utilities.formatDate(now, TZ, 'MM')) !== NOTICE_MONTH) return NOTICE_MONTH + '月ではないので送りません';
+  var props = PropertiesService.getScriptProperties();
+  var year = String(jstYear_(now));
+  if (props.getProperty('NOTICE_SENT') === year) return year + '年のお知らせは送ってあります';
+  sendNotice_(props, '');
+  props.setProperty('NOTICE_SENT', year);
+  return year + '年のお知らせを送りました';
+}
+
+function testNotice() {
+  sendNotice_(PropertiesService.getScriptProperties(), '（試し）');
+  return '試しのお知らせを送りました';
+}
+
+function sendNotice_(props, mark) {
+  var to = props.getProperty('NOTIFY_EMAIL') || Session.getEffectiveUser().getEmail();
+  if (!to) throw new Error('宛先がありません（スクリプトのプロパティ NOTIFY_EMAIL に入れてください）');
+  MailApp.sendEmail({
+    to: to,
+    subject: mark + '成長の地図：振り返りの時期です',
+    body: noticeBody_(backupInfo_(props.getProperty('LAST_BACKUP'))),
+    name: '成長の地図',
+  });
+}
+
+// お知らせの本文（記録の中身は入れない）
+function noticeBody_(backup) {
+  var lines = [
+    '今年もあと少しです。',
+    '年末年始に、成長の地図で1年を振り返りましょう。',
+    '',
+    '① 今年の目標の答え合わせ',
+    '② 今年の振り返り',
+    '③ 来年の目標',
+    '④ 来年の抱負',
+    '',
+    '振り返りを開く：' + APP_URL + '#/review',
+  ];
+  if (backup) {
+    lines.push('', '最後の控え：' + Utilities.formatDate(new Date(Date.parse(backup.at)), TZ, 'yyyy年M月d日') + '（' + backup.rows + '行）');
+  }
+  return lines.join('\n');
 }
 
 // ------------------------------------------------------------ 小物

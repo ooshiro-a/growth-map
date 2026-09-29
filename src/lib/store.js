@@ -77,6 +77,7 @@ export function createStore({
     error: null,
     notice: null,
     serverYear: null,
+    backup: null, // { at, rows }：最後の控え（GAS の毎月の複製。設定に出す）
     syncedSeq: 0, // シートの全部をそろえられた、いちばん新しい読み込み・送信の番号（store.seq() と比べる）
   };
   const listeners = new Set();
@@ -205,7 +206,7 @@ export function createStore({
       const rows = gen !== startGen || flushing ? mergeByNo(snap, state.rows) : snap;
       // 止まっていた知らせは、読めたら消す
       const notice = state.notice === ERROR_TEXT.locked ? null : state.notice;
-      set({ rows, cachedAt: null, phase: 'ready', refreshing: false, error: null, notice, serverYear: res.serverYear ?? null, syncedSeq: Math.max(state.syncedSeq, my), ...takeKey(res) });
+      set({ rows, cachedAt: null, phase: 'ready', refreshing: false, error: null, notice, serverYear: res.serverYear ?? null, backup: res.backup ?? null, syncedSeq: Math.max(state.syncedSeq, my), ...takeKey(res) });
       saveCache();
     } catch (e) {
       if (!disposed) handleError(e, 'load');

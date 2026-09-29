@@ -5,7 +5,7 @@ import { ItemList } from '../components/ItemList.jsx';
 import { APP_VERSION, ENV_LABEL, GAS_URLS } from '../config.js';
 import { ERROR_TEXT } from '../lib/api.js';
 import { clockOffset, now } from '../lib/clock.js';
-import { formatJpDate, jstParts } from '../lib/dates.js';
+import { formatJpDate, jstParts, toMs } from '../lib/dates.js';
 import { newId } from '../lib/ids.js';
 import { KIND, LAYER, OP, SCHEMA_VERSION } from '../lib/schema.js';
 import { MapImport } from './MapImport.jsx';
@@ -116,6 +116,35 @@ function FailedList() {
   );
 }
 
+// 控え：GAS が毎月1日にシートを複製する。最後の控えが古ければ知らせる
+export const BACKUP_STALE_DAYS = 40;
+
+export function BackupInfo() {
+  const { st } = useApp();
+  if (st.phase !== 'ready') return null;
+  const b = st.backup;
+  const ms = b && toMs(b.at);
+  const stale = ms != null && now() - ms > BACKUP_STALE_DAYS * 86400e3;
+  return (
+    <section className="list">
+      <div className="sec">
+        <span>控えとお知らせ</span>
+      </div>
+      {ms != null ? (
+        <p className="note">
+          最後の控え：{formatJpDate(b.at)}（{b.rows}行）
+        </p>
+      ) : (
+        <p className="note">控えはまだありません</p>
+      )}
+      {stale && <p className="err">{BACKUP_STALE_DAYS}日以上、控えができていません。GAS の時間指定を確かめてください</p>}
+      <p className="note">
+        毎月1日に、シートをGoogle ドライブの「控え」フォルダへ複製します。毎年12月25日に、振り返りのお知らせをメールで送ります（どちらも GAS の時間指定。作り方は docs/setup.md）
+      </p>
+    </section>
+  );
+}
+
 export function Settings() {
   const { st, store, env, setEnv, model } = useApp();
   const [confirm, setConfirm] = useState(null);
@@ -164,6 +193,8 @@ export function Settings() {
       </section>
 
       <FailedList />
+
+      <BackupInfo />
 
       <section className="list">
         <div className="sec">
