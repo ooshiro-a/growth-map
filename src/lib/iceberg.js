@@ -1,7 +1,7 @@
 // アイスバーグの図：言葉の置き場所を計算する（画面の部品はこの結果を描くだけ）
 //
 // 決まり（フェーズ0で決めた収まり方）
-// - 図に出すのは「（」より前の部分で、幅8文字ぶんまで（はみ出す分は「…」。全文は押した時に出す）
+// - 図に出すのは「（」より前の部分で、10文字ぶんまで（それより長い時は10文字の後ろに「…」。全文は押した時に出す）
 // - 三角形のその高さに入る分だけ、1行ずつ詰める（後ろの短い言葉が前の行の空きに入ることがある）
 // - 層の高さは中身に合わせて変わる
 // - 入らなければ図の高さを伸ばす（スマホ：幅の1.55倍→1.85倍）→ 文字を小さくする → 「ほかN語」にまとめる
@@ -34,15 +34,16 @@ export function charEm(ch) {
 export const textEm = (s) => [...String(s)].reduce((a, ch) => a + charEm(ch), 0);
 export const estimateWidth = (text, px, bold = false) => textEm(text) * px * (bold ? 1.04 : 1);
 
-// 図に出す短い言葉：「（」より前・幅8文字ぶんまで
-export function shortLabel(text, capEm = 8) {
+// 図に出す短い言葉：「（」より前・10文字ぶんまで（長い時は10文字＋「…」）
+export const LABEL_EM = 10;
+export function shortLabel(text, capEm = LABEL_EM) {
   const full = String(text || '').trim();
   const base = full.split(/[（(]/)[0].trim() || full;
   if (textEm(base) <= capEm) return base;
   let out = '';
   let w = 0;
   for (const ch of base) {
-    if (w + charEm(ch) > capEm - 1) break;
+    if (w + charEm(ch) > capEm) break;
     out += ch;
     w += charEm(ch);
   }

@@ -56,22 +56,38 @@ function chipsLast(L) {
 }
 
 describe('図に出す短い言葉', () => {
-  it('「（」より前だけ。長ければ8文字ぶんで「…」', () => {
+  it('「（」より前だけ。10文字まで出し、長ければ10文字＋「…」', () => {
     expect(shortLabel('朝に歩く（週3回）')).toBe('朝に歩く');
     expect(shortLabel('朝に歩く(週3回)')).toBe('朝に歩く');
-    expect(shortLabel('あいうえおかきくけこ')).toBe('あいうえおかき…');
-    expect(shortLabel('ABCDEFGHIJKL')).toBe('ABCDEFGHIJKL'); // 半角は幅が狭い
+    expect(shortLabel('あいうえおかきくけこ')).toBe('あいうえおかきくけこ');
+    expect(shortLabel('あいうえおかきくけこさ')).toBe('あいうえおかきくけこ…');
+    expect(shortLabel('挑戦し続け、成長し続ける')).toBe('挑戦し続け、成長し続…');
+    expect(shortLabel('ABCDEFGHIJKLMNOPQR')).toBe('ABCDEFGHIJKLMNOPQR'); // 半角は幅が狭い（18字で 9.9文字ぶん）
     expect(shortLabel('（だけ）')).toBe('（だけ）');
   });
 });
 
 describe('言葉の置き場所', () => {
-  it('ふつうの量はスマホ幅・本の比率・10.5px で全部入る', () => {
-    const spec = specOf({ skill: many('能', 4), plus: many('プ', 6), minus: many('マ', 3), mind: many('意', 9) });
+  it('ふつうの量（短い言葉）はスマホ幅・本の比率・10.5px で全部入る', () => {
+    const short = (prefix, n) => Array.from({ length: n }, (_, i) => word(`${prefix}${i}`, shortLabel(`${prefix}の短い言葉${i}`), 2));
+    const spec = specOf({ skill: short('能', 4), plus: short('プ', 6), minus: short('マ', 3), mind: short('意', 9) });
     const L = layoutIceberg({ width: 343, spec });
     expect(L.hidden).toEqual([]);
     expect(L.font).toBe(10.5);
     expect(L.H).toBe(Math.round(343 * 1.55));
+    expect(L.words).toHaveLength(22);
+    checkInside(L);
+  });
+
+  it('10文字の言葉ばかりでも、ふつうの量は図を伸ばし文字を少し小さくして全部入る（「…」なし）', () => {
+    const ten = (prefix, n) => Array.from({ length: n }, (_, i) => word(`${prefix}${i}`, shortLabel(`${prefix}の言葉その${i}番目だ`), 2));
+    const spec = specOf({ skill: ten('能', 4), plus: ten('プ', 6), minus: ten('マ', 3), mind: ten('意', 9) });
+    const L = layoutIceberg({ width: 343, spec });
+    expect(L.words.map((w) => w.word.label)).toContain('意の言葉その8番目だ'); // 10文字は「…」なし
+    expect(L.hidden).toEqual([]);
+    expect(L.font).toBe(9.5);
+    expect(L.H).toBeGreaterThan(Math.round(343 * 1.55));
+    expect(L.H).toBeLessThanOrEqual(Math.round(343 * 1.85));
     expect(L.words).toHaveLength(22);
     checkInside(L);
   });
