@@ -2,7 +2,7 @@
   "name": "growth-map",
   "private": true,
   "version": "0.1.0",
-  "description": "成長の地図（個人用）",
+  "description": "grops（個人用・成長の地図と戦略）",
   "type": "module",
   "scripts": {
     "dev": "vite",

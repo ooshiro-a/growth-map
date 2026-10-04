@@ -1,4 +1,6 @@
-# 成長の地図（growth-map）
+# grops（growth-map。旧名：成長の地図）
+
+> 表示名は grops（2026年10月から）。URL・リポジトリ名・シート名・内部の名前（鍵の署名 `growth-map-key:`・記憶のキー `gm.*`・取り込み形式 `growth-map-seed/1`）は変えない。タブ名「成長の地図」は本の用語なので残す。表示名は `src/config.js` の `APP_NAME` と `gas/Code.gs` の `APP_NAME`
 
 個人用アプリ。辛い時と年末年始に、自分の成長と進む方向を数分で確かめて書き足す。
 要件は `docs/requirements.md`。画面の見本・個人データは `reference/`（git に入らない）。

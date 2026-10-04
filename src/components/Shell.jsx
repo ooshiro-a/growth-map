@@ -1,5 +1,5 @@
 import { useApp } from '../app-context.js';
-import { ENV_LABEL } from '../config.js';
+import { APP_NAME, ENV_LABEL } from '../config.js';
 import { ERROR_TEXT } from '../lib/api.js';
 import { ErrorBoundary } from './ErrorBoundary.jsx';
 
@@ -70,7 +70,7 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
   return (
     <div className="app">
       <aside className="side" aria-label="画面の切り替え">
-        <div className="side-title">成長の地図</div>
+        <div className="side-title">{APP_NAME}</div>
         {TABS.map((t) => (
           <div key={t.key}>
             <button type="button" className={`side-item${tab === t.key && !SUBTABS[t.key] ? ' on' : ''}`} onClick={() => go(t.path)}>

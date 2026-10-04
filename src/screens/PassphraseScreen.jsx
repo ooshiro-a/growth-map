@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ENV_LABEL, GAS_URLS } from '../config.js';
+import { APP_NAME, ENV_LABEL, GAS_URLS } from '../config.js';
 import { ERROR_TEXT } from '../lib/api.js';
 
 // 合言葉（端末ごとに初回に1回。記憶が消えたら入れ直す）
@@ -16,7 +16,7 @@ export function PassphraseScreen({ env, error, onSubmit, onEnv }) {
           if (pass.trim()) onSubmit(pass.trim());
         }}
       >
-        <h1>成長の地図</h1>
+        <h1>{APP_NAME}</h1>
         <p className="note">合言葉を入れてください（この端末に記憶します）</p>
         {canTest && (
           <div className="seg" role="radiogroup" aria-label="接続先">

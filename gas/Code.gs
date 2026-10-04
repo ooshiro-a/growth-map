@@ -1,5 +1,5 @@
 /**
- * 成長の地図 GAS（スプレッドシートに付いたスクリプト）
+ * grops（旧名：成長の地図）GAS（スプレッドシートに付いたスクリプト）
  *
  * 画面（doPost）からすることは2つだけ：「行を足す」「全部読む」。行の書き換え・削除はしない。
  * 時間指定からすること（setupSchedule で作る）：毎月の控えの複製・12月のお知らせのメール
@@ -306,6 +306,7 @@ function setup() {
 //   testNotice     お知らせのメールを今送る（件名に「試し」）
 
 var APP_URL = 'https://ooshiro-a.github.io/growth-map/';
+var APP_NAME = 'grops'; // アプリの表示名（URL は growth-map のまま）
 var BACKUP_DAY = 1; // 毎月1日の
 var BACKUP_HOUR = 3; // 3時台
 var NOTICE_MONTH = 12;
@@ -429,9 +430,9 @@ function sendNotice_(props, mark) {
   if (!to) throw new Error('宛先がありません（スクリプトのプロパティ NOTIFY_EMAIL に入れてください）');
   MailApp.sendEmail({
     to: to,
-    subject: mark + '成長の地図：振り返りの時期です',
+    subject: mark + APP_NAME + '：振り返りの時期です',
     body: noticeBody_(backupInfo_(props.getProperty('LAST_BACKUP'))),
-    name: '成長の地図',
+    name: APP_NAME,
   });
 }
 
@@ -439,7 +440,7 @@ function sendNotice_(props, mark) {
 function noticeBody_(backup) {
   var lines = [
     '今年もあと少しです。',
-    '年末年始に、成長の地図で1年を振り返りましょう。',
+    '年末年始に、' + APP_NAME + ' で1年を振り返りましょう。',
     '',
     '① 今年の目標の答え合わせ',
     '② 今年の振り返り',

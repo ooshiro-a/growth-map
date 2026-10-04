@@ -11,6 +11,9 @@ export const GAS_URLS = {
 
 export const ENV_LABEL = { prod: '本番', test: 'テスト用' };
 
+// アプリの名前（画面に出す表示名。URL・リポジトリ名・内部の名前は growth-map のまま）
+export const APP_NAME = 'grops';
+
 /* global __APP_VERSION__ */
 export const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
 

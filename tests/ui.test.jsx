@@ -297,3 +297,13 @@ describe('初期データの取り込み（画面）', () => {
     expect(screen.getByText(/1行を足しました/)).toBeTruthy();
   });
 });
+
+describe('アプリの表示名', () => {
+  it('合言葉の画面の見出しは grops（タブ名「成長の地図」は本の用語なので別）', async () => {
+    const { PassphraseScreen } = await import('../src/screens/PassphraseScreen.jsx');
+    const { APP_NAME } = await import('../src/config.js');
+    expect(APP_NAME).toBe('grops');
+    render(<PassphraseScreen env="test" error={null} onEnv={() => {}} onSubmit={() => {}} />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('grops');
+  });
+});

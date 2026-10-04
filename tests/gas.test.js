@@ -341,7 +341,7 @@ describe('GAS：時間指定と12月のお知らせ', () => {
     expect(env.ctx.decemberNotice()).toBe('2026年のお知らせを送りました');
     expect(env.ctx.decemberNotice()).toBe('2026年のお知らせは送ってあります');
     expect(env.mails).toHaveLength(1);
-    expect(env.mails[0]).toMatchObject({ to: 'owner@example.com', subject: '成長の地図：振り返りの時期です', name: '成長の地図' });
+    expect(env.mails[0]).toMatchObject({ to: 'owner@example.com', subject: 'grops：振り返りの時期です', name: 'grops' });
     expect(env.mails[0].body).toContain('https://ooshiro-a.github.io/growth-map/#/review');
 
     env.setClock(at(2027, 12, 25));
@@ -356,7 +356,7 @@ describe('GAS：時間指定と12月のお知らせ', () => {
     env.props.set('NOTIFY_EMAIL', 'notice@example.com');
     expect(env.ctx.testNotice()).toBe('試しのお知らせを送りました');
     const m = env.mails[0];
-    expect(m).toMatchObject({ to: 'notice@example.com', subject: '（試し）成長の地図：振り返りの時期です' });
+    expect(m).toMatchObject({ to: 'notice@example.com', subject: '（試し）grops：振り返りの時期です' });
     expect(m.body).toContain('最後の控え：2026年12月1日（1行）');
     expect(m.body).not.toContain('作り物の秘密の言葉');
     expect(env.props.get('NOTICE_SENT')).toBeUndefined();
