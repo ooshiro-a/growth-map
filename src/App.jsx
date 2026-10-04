@@ -6,6 +6,7 @@ import { useHashRoute } from './hooks.js';
 import { ERROR_TEXT } from './lib/api.js';
 import { currentYear, now, setClockOffset } from './lib/clock.js';
 import { buildModel } from './lib/fold.js';
+import { currentQuarter } from './lib/review.js';
 import { PER_YEAR_KINDS } from './lib/schema.js';
 import { createStore } from './lib/store.js';
 import { AccelScreen } from './screens/AccelScreen.jsx';
@@ -58,12 +59,15 @@ export default function App() {
   const store = useMemo(() => createStore({ env, url, storage, nowFn: now }), [env, url]);
   const st = useStoreState(store);
   const [year, setYear] = useState(currentYear);
+  // 今の四半期（ホームの「今の四半期の目標」）。開いたまま四半期をまたいでも描き直す
+  const [quarter, setQuarter] = useState(() => currentQuarter(now()));
   const [route, go] = useHashRoute('home');
 
   // 本番では仮の日付を使わない
   useEffect(() => {
     if (env === 'prod') setClockOffset(0);
     setYear(currentYear());
+    setQuarter(currentQuarter(now()));
   }, [env]);
 
   // 接続先を替えたら前の保存の仕組みを止める
@@ -75,11 +79,13 @@ export default function App() {
   }, [store]);
 
   // 画面に戻った時・通信が戻った時：年を確かめ直し、未保存を送る
-  // 開いたまま年をまたいだ時のために、1分ごとにも年だけ確かめる
+  // 開いたまま年・四半期をまたいだ時のために、1分ごとにも年と四半期を確かめる
   const yearRef = useRef(year);
   yearRef.current = year;
   useEffect(() => {
     const checkYear = () => {
+      const cq = currentQuarter(now());
+      setQuarter((old) => (old && cq && old.year === cq.year && old.q === cq.q ? old : cq));
       const y = currentYear();
       if (y === yearRef.current) return;
       yearRef.current = y;
@@ -139,11 +145,12 @@ export default function App() {
       if (env !== 'test') return;
       setClockOffset(ms);
       setYear(currentYear());
+      setQuarter(currentQuarter(now()));
     },
     [env],
   );
 
-  const ctx = { store, st, model, year, env, readOnly, write, setEnv, setClock };
+  const ctx = { store, st, model, year, quarter, env, readOnly, write, setEnv, setClock };
 
   if (st.phase === 'needPass' || (st.phase === 'init' && !st.pass && !st.key)) {
     return (

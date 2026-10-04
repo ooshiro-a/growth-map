@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useMemo, useState } from 'react';
 import { AppContext } from '../src/app-context.js';
+import { setClockOffset } from '../src/lib/clock.js';
 import { buildModel } from '../src/lib/fold.js';
 import { historyText } from '../src/lib/labels.js';
 import { KIND, LAYER, OP, toRow } from '../src/lib/schema.js';
@@ -86,6 +87,76 @@ describe('ホームの画面', () => {
     expect(screen.getByText('作り物の足した目標')).toBeTruthy();
   });
 
+  it('今の四半期の目標：今の四半期の分だけ札つきで出す。年の目標には混ざらない。ここからも足せる', () => {
+    setClockOffset(Date.parse('2026-11-10T12:00:00+09:00') - Date.now());
+    try {
+      const log = [];
+      const initial = [
+        r({ year: 2026, kind: G, id: 'ny1', op: OP.ADD, text: '作り物の今年の目標' }),
+        r({ year: 2026, kind: G, id: 'nq1', op: OP.ADD, layer: 'q4', text: '作り物の4Qの目標' }),
+        r({ year: 2026, kind: G, id: 'nq1', op: OP.MISS, layer: 'q4' }),
+        r({ year: 2026, kind: G, id: 'nq2', op: OP.ADD, layer: 'q3', text: '作り物の3Qの目標' }),
+        r({ year: 2025, kind: G, id: 'nq3', op: OP.ADD, layer: 'q4', text: '作り物の去年の4Qの目標' }),
+      ];
+      render(
+        <Harness log={log} initial={initial}>
+          <HomeScreen />
+        </Harness>,
+      );
+      const sections = [...document.querySelectorAll('.home-screen section')];
+      expect(sections[0].textContent).toContain('作り物の今年の目標');
+      expect(sections[0].textContent).not.toContain('作り物の4Qの目標');
+      expect(sections[1].querySelector('.sec').textContent).toBe('4Qの目標（10〜12月）…');
+      expect([...sections[1].querySelectorAll('.item .tx')].map((x) => x.textContent)).toEqual(['作り物の4Qの目標']);
+      expect(within(sections[1]).getByText('未達', { selector: '.judge-tag' })).toBeTruthy();
+      expect(screen.queryByText('作り物の3Qの目標')).toBeNull();
+      expect(screen.queryByText('作り物の去年の4Qの目標')).toBeNull();
+
+      openMenu('4Qの目標（10〜12月）の操作');
+      choose('目標を追加');
+      const dialog = screen.getByRole('dialog', { name: '目標を追加' });
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の足した4Qの目標' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+      expect(log.at(-1)).toMatchObject({ kind: '目標', op: '追加', year: 2026, layer: 'q4', text: '作り物の足した4Qの目標' });
+    } finally {
+      setClockOffset(0);
+    }
+  });
+
+  it('年が変わった直後（年を確かめ直す前）は、前の年の4Q のまま', () => {
+    setClockOffset(Date.parse('2027-01-01T00:00:30+09:00') - Date.now());
+    try {
+      render(
+        <Harness log={[]} currentYear={2026}>
+          <HomeScreen />
+        </Harness>,
+      );
+      expect(screen.getByText('4Qの目標（10〜12月）')).toBeTruthy();
+      expect(screen.getByText('まだありません。振り返りの「四半期」で決めます')).toBeTruthy();
+    } finally {
+      setClockOffset(0);
+    }
+  });
+
+  it('開いたまま四半期をまたぐと、App が知らせる今の四半期で描き直す', () => {
+    const model = buildModel([r({ year: 2026, kind: G, id: 'nq1', op: OP.ADD, layer: 'q4', text: '作り物の4Qの目標' })], [], { currentYear: 2026 });
+    const ctx = (quarter) => ({ model, write: () => null, readOnly: false, year: 2026, quarter });
+    const { rerender } = render(
+      <AppContext.Provider value={ctx({ year: 2026, q: 3 })}>
+        <HomeScreen />
+      </AppContext.Provider>,
+    );
+    expect(screen.getByText('3Qの目標（7〜9月）')).toBeTruthy();
+    expect(screen.queryByText('作り物の4Qの目標')).toBeNull();
+    rerender(
+      <AppContext.Provider value={ctx({ year: 2026, q: 4 })}>
+        <HomeScreen />
+      </AppContext.Provider>,
+    );
+    expect(screen.getByText('4Qの目標（10〜12月）')).toBeTruthy();
+    expect(screen.getByText('作り物の4Qの目標')).toBeTruthy();
+  });
+
   it('目標がない時の案内', () => {
     render(
       <Harness log={[]}>
@@ -123,7 +194,7 @@ describe('ホームの画面', () => {
     fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の指標B' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
     expect(log.at(-1)).toMatchObject({ text: '作り物の指標B', extra: { after: idA } });
-    const texts = () => [...document.querySelectorAll('.home-screen section:nth-of-type(2) .item .tx')].map((x) => x.textContent);
+    const texts = () => [...document.querySelectorAll('.home-screen section:last-of-type .item .tx')].map((x) => x.textContent);
     expect(texts()).toEqual(['作り物の指標A', '作り物の指標B', '作り物の指標C']);
 
     openMenu('「作り物の指標B」の操作');
@@ -178,7 +249,7 @@ describe('ホームの画面', () => {
     ]);
     expect(log.at(-1).extra.after).toBeUndefined();
     expect(screen.queryByRole('dialog')).toBeNull();
-    const texts = [...document.querySelectorAll('.home-screen section:nth-of-type(2) .item .tx')].map((x) => x.textContent);
+    const texts = [...document.querySelectorAll('.home-screen section:last-of-type .item .tx')].map((x) => x.textContent);
     expect(texts).toEqual(['作り物の考え2', '作り物の考え1', '作り物の考え3']);
 
     // もう一度開くと、足した言葉も入れ済み

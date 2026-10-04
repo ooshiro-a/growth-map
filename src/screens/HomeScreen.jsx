@@ -5,10 +5,12 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { now } from '../lib/clock.js';
 import { icebergYear } from '../lib/iceberg.js';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
-import { KIND, LAYER, OP } from '../lib/schema.js';
+import { QUARTER_MONTHS, currentQuarter } from '../lib/review.js';
+import { KIND, LAYER, OP, quarterLayer } from '../lib/schema.js';
 import { GoalSection } from './ReviewScreen.jsx';
 
 const K = KIND.PRINCIPLE;
@@ -149,12 +151,25 @@ function Principles({ year, locked }) {
   );
 }
 
-// ホーム（最初の画面）：今年の目標と指標
+// ホーム（最初の画面）：今年の目標・今の四半期の目標と指標
 export function HomeScreen() {
-  const { readOnly, year } = useApp();
+  const { readOnly, year, quarter } = useApp();
+  // 今の四半期は App が見張っている（開いたまま四半期をまたいでも描き直す）。無い時（試験など）はその場で求める
+  // 今年の中で数える（年が変わった直後、年を確かめ直すまでは前の年の4Q のまま）
+  const cq = quarter || currentQuarter(now());
+  const q = !cq ? 1 : cq.year === year ? cq.q : cq.year > year ? 4 : 1;
   return (
     <div className="home-screen">
       <GoalSection title="今年の目標" goalYear={year} tags locked={readOnly} emptyText="まだありません。年末年始に振り返りの③で決めます" />
+      <GoalSection
+        title={`${q}Qの目標（${QUARTER_MONTHS[q]}）`}
+        goalYear={year}
+        layer={quarterLayer(q)}
+        tags
+        toResult={false}
+        locked={readOnly}
+        emptyText="まだありません。振り返りの「四半期」で決めます"
+      />
       <Principles year={year} locked={readOnly} />
     </div>
   );

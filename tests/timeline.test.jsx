@@ -122,6 +122,8 @@ describe('年ごとの記録', () => {
     ...sixYears(),
     r({ year: 2025, kind: KIND.BRAKE, id: 'nb1', op: OP.ADD, layer: LAYER.CHILD, text: '作り物のブレーキ', value: 'released' }),
     r({ year: 2026, kind: KIND.AXIS, id: 'na1', op: OP.ADD, text: '作り物の理念' }),
+    r({ year: 2025, kind: G, id: 'nq1', op: OP.ADD, layer: 'q2', text: '作り物の2Qの目標' }),
+    r({ year: 2025, kind: G, id: 'nq1', op: OP.ACHIEVE, layer: 'q2' }),
   ];
 
   it('年と中身を選べる。今年でも見るだけ（「＋追加」「完全に削除する」は出ない）', () => {
@@ -174,10 +176,22 @@ describe('年ごとの記録', () => {
         <YearRecord year={2025} part="review" />
       </Harness>,
     );
+    expect(screen.getByRole('tab', { name: '年の振り返り', selected: true })).toBeTruthy();
     expect(screen.getByText('2025年の目標の答え合わせ')).toBeTruthy();
     expect(screen.getByText('作り物の目標A')).toBeTruthy();
     expect(screen.queryByText('年末年始は上から順に進めます')).toBeNull();
     expect(screen.queryByText('逆算ロードマップ')).toBeNull();
+
+    // 四半期も見るだけで出す
+    fireEvent.click(screen.getByRole('tab', { name: '四半期' }));
+    fireEvent.click(screen.getByRole('tab', { name: '2Q（4〜6月）' }));
+    expect(screen.getByText('2025年2Qの目標の答え合わせ')).toBeTruthy();
+    expect(screen.getByText('作り物の2Qの目標')).toBeTruthy();
+    expect(screen.getByText('達成', { selector: '.judge-tag' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: /答え合わせ/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: '＋ 書く' })).toBeNull();
+    expect(screen.queryByText('四半期の終わりに上から順に進めます')).toBeNull();
+    expect(screen.queryByText('作り物の目標A')).toBeNull();
 
     rerender(
       <Harness rows={rows()}>

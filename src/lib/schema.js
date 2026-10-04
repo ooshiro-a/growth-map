@@ -66,6 +66,11 @@ export const LAYER = {
   // 振り返り（②と④。①は目標の達成/未達、③は翌年の目標）
   REVIEW: 'review',
   RESOLUTION: 'resolution',
+  // 四半期（目標と振り返りの文章。年の目標は層が空）
+  Q1: 'q1',
+  Q2: 'q2',
+  Q3: 'q3',
+  Q4: 'q4',
   // 長期
   ROADMAP_WORK: 'roadmapWork',
   ROADMAP_PRIVATE: 'roadmapPrivate',
@@ -85,9 +90,14 @@ export const MOTIVE_QUADRANTS = [
   LAYER.SELF_INVISIBLE,
   LAYER.OTHER_INVISIBLE,
 ];
+// 四半期の層（1Q＝1〜3月 … 4Q＝10〜12月）
+export const quarterLayer = (q) => `q${q}`;
+// 層が四半期なら 1〜4、ほかは null
+export const quarterOfLayer = (layer) => (/^q[1-4]$/.test(layer || '') ? Number(layer[1]) : null);
+
 // 区分の点数を持つ決まった番号（毎年同じ番号を使う）
 export const motiveQuadrantId = (q) => `mv-${q}`;
-// 振り返り②④の決まった番号
+// 振り返り②④（四半期の振り返りは層 q1〜q4）の決まった番号
 export const reviewId = (year, layer) => `rv-${year}-${layer}`;
 
 // 付記に書いてよい鍵

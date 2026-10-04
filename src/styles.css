@@ -1582,6 +1582,30 @@ a.link-row .note {
   margin: 8px auto;
 }
 
+/* 振り返り：年／四半期の切り替えと、1Q〜4Q（スマホ幅でも1行） */
+.review-screen > .seg button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+.seg.quarters button {
+  padding: 5px 2px;
+  line-height: 1.25;
+}
+.seg.quarters b,
+.seg.quarters small {
+  display: block;
+}
+.seg.quarters small {
+  font-size: 10.5px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+.seg.quarters button.on {
+  background: var(--ai);
+  border-color: var(--ai);
+}
+
 /* 年表＞年ごとの記録：中身の切り替え（スマホ幅でも1行） */
 .year-record > .seg button {
   flex: 1 1 auto;

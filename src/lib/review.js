@@ -9,6 +9,36 @@ export function defaultReviewYear(nowMs) {
   return p.month === 1 ? p.year - 1 : p.year;
 }
 
+// ---------------------------------------------------------------- 四半期（1Q＝1〜3月）
+export const QUARTERS = [1, 2, 3, 4];
+export const QUARTER_MONTHS = { 1: '1〜3月', 2: '4〜6月', 3: '7〜9月', 4: '10〜12月' };
+
+// 今の四半期（日本時間）
+export function currentQuarter(nowMs) {
+  const p = jstParts(nowMs);
+  if (!p) return null;
+  return { year: p.year, q: Math.ceil(p.month / 3) };
+}
+
+// 最初に選ぶ四半期：四半期の最初の月（1・4・7・10月）は前の四半期（終わった分を振り返る）、ほかは今の四半期
+// 年は defaultReviewYear と同じになる（1月は前の年の4Q）
+export function defaultQuarter(nowMs) {
+  const p = jstParts(nowMs);
+  if (!p) return null;
+  const q = Math.ceil(p.month / 3);
+  if (p.month % 3 !== 1) return { year: p.year, q };
+  return q === 1 ? { year: p.year - 1, q: 4 } : { year: p.year, q: q - 1 };
+}
+
+// 次の四半期（4Q の次は翌年の1Q）
+export const nextQuarter = (year, q) => (q === 4 ? { year: year + 1, q: 1 } : { year, q: q + 1 });
+
+// 振り返りの画面で最初に出す方：年末年始（12・1月）は年の振り返り、ほかは四半期
+export function defaultReviewMode(nowMs) {
+  const p = jstParts(nowMs);
+  return p && p.month !== 12 && p.month !== 1 ? 'quarter' : 'year';
+}
+
 // 書けるのは今年と前の年の分だけ。それより前は見るだけ
 export const canWriteReview = (year, currentYear) => currentYear != null && year >= currentYear - 1 && year <= currentYear;
 
@@ -27,8 +57,9 @@ export function reviewYears(model, currentYear, extra = null) {
 }
 
 // その年の目標（削除した目標も元の位置に灰色で残る）
-export function goalsOf(model, year) {
-  return model.list(model.flat(KIND.GOAL), 'L:').filter((g) => g.year === year);
+// layer：''＝年の目標、q1〜q4＝その四半期の目標（年の目標とは並びの組が分かれていて混ざらない）
+export function goalsOf(model, year, layer = '') {
+  return model.list(model.flat(KIND.GOAL), `L:${layer}`).filter((g) => g.year === year);
 }
 
 // 答え合わせの件数（削除した目標は数えない）
@@ -39,7 +70,21 @@ export function goalCounts(goals) {
   return { achieved, missed, open: live.length - achieved - missed };
 }
 
-// 振り返り②（review）・④（resolution）。まだ書いていなければ null
+// 次の四半期へ写す未達の目標：削除していない未達のうち、写す先に同じ文言がまだないもの
+// 写す元に同じ文言が2つあっても、写すのは最初の1つだけ
+export function missedToCarry(goals, target) {
+  const have = new Set(target.filter((g) => !g.deletedRec).map((g) => g.text.trim()));
+  const out = [];
+  for (const g of goals) {
+    const t = g.text.trim();
+    if (g.deletedRec || g.result !== OP.MISS || have.has(t)) continue;
+    have.add(t);
+    out.push(g);
+  }
+  return out;
+}
+
+// 振り返り②（review）・④（resolution）、四半期の振り返り（q1〜q4）。まだ書いていなければ null
 export function reviewEntry(model, year, layer) {
   return model.flat(KIND.REVIEW).entities.get(reviewId(year, layer)) || null;
 }

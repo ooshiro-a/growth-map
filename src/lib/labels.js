@@ -74,6 +74,9 @@ export function attrText(attrs, keys = ['when', 'freq', 'tactic']) {
     .join('／');
 }
 
+// 追加の行の付記.source（どこから足したか）
+const SOURCE_TEXT = { iceberg: 'アイスバーグから', mindmap: '旧マップから', quarter: '前の四半期から' };
+
 // 履歴の1行の中身
 export function historyText(rec, kind) {
   switch (rec.op) {
@@ -81,7 +84,7 @@ export function historyText(rec, kind) {
     case OP.EDIT: {
       if (kind === KIND.REVIEW) return rec.text ? `書いた「${rec.text}」` : '空にした';
       const attrs = kind === KIND.LONGTERM ? attrText(rec.extra) : kind === KIND.BRAKE ? brakeAttrText(rec.extra) : '';
-      const from = rec.op !== OP.ADD ? '' : rec.extra.source === 'iceberg' ? 'アイスバーグから' : rec.extra.source === 'mindmap' ? '旧マップから' : '';
+      const from = rec.op !== OP.ADD ? '' : SOURCE_TEXT[rec.extra.source] || '';
       return `${from}${opWord(rec, kind)}「${rec.text}」${attrs ? `（${attrs}）` : ''}`;
     }
     case OP.SCORE:
