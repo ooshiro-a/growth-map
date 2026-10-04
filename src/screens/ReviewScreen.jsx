@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../app-context.js';
 import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
+import { useCap } from '../components/Cap.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
@@ -77,11 +78,14 @@ export function GoalSection({
   emptyText,
   toResult = true,
   carryTo = null,
+  limit = null,
   children,
 }) {
   const { model, write } = useApp();
   const goals = goalsOf(model, goalYear, layer);
   const [dialog, setDialog] = useState(null);
+  // limit：スマホのホームで出す数（超えた分は「ほか○件」で開く）
+  const cap = useCap(goals.length, limit);
 
   const ok = (rows) => rows != null;
   const row = (o) => ({ year: goalYear, kind: KIND.GOAL, layer, ...o });
@@ -127,18 +131,20 @@ export function GoalSection({
   const c = judge ? goalCounts(goals) : null;
 
   return (
-    <section className="list">
+    <section className={`list${cap.cls}`}>
       <div className="sec">
         <span>
           {num != null && <span className="num">{num}</span>}
           {title}
         </span>
+        {cap.button}
         {!locked && <MoreMenu small label={`${title}の操作`} items={sectionMenu} />}
       </div>
       {goals.length === 0 && <p className="note">{emptyText}</p>}
-      {goals.map((g) => (
+      {goals.map((g, i) => (
         <ItemRow
           key={g.id}
+          className={cap.over(i)}
           text={g.text}
           date={dateLine(g)}
           deleted={!!g.deletedRec}

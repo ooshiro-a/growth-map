@@ -246,3 +246,18 @@ html, body { line-height: 1.6; }
 @media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .sec { border-bottom-color: var(--sub); } }
 :root[data-theme='dark'] .home-cols .principles .sec { border-bottom-color: var(--gold); }
 @media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .principles .sec { border-bottom-color: var(--gold); } }
+/* ホーム（スマホ）：下のタブに隠れず1画面に収める。図を小さく（文字は図の上に1行）、項目は1行（押すと全文）、各欄3件まで（「ほか○件」で開く） */
+.cap-more { display: none; }
+@media (max-width: 767px) {
+  .home-hero { height: 128px; margin: -10px -16px 12px; }
+  .home-hero svg { top: 28px; height: calc(100% - 28px); }
+  .home-hero .hero-cap { left: 16px; right: 16px; top: 8px; flex-direction: row; justify-content: space-between; align-items: baseline; gap: 8px; white-space: nowrap; }
+  .home-hero .hero-cap b span { display: inline; }
+  .home-cols { gap: 0; }
+  .home-cols > .list { margin-bottom: 10px; }
+  .home-cols .tx { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .home-cols .item.show .tx { white-space: pre-wrap; overflow: visible; }
+  .home-cols .capped:not(.open) .item.over { display: none; }
+  .home-cols .capped:not(.open) .item:has(+ .item.over) { border-bottom: none; }
+  .cap-more { display: inline-block; margin-left: auto; border: none; background: none; padding: 2px 4px; font-size: 12px; font-weight: 700; color: var(--ai-tx); }
+}

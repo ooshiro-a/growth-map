@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../app-context.js';
+import { useCap } from '../components/Cap.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
@@ -14,6 +15,8 @@ import { KIND, LAYER, OP, quarterLayer } from '../lib/schema.js';
 import { GoalSection } from './ReviewScreen.jsx';
 
 const K = KIND.PRINCIPLE;
+// スマホのホームで各欄に出す数（1画面に収める。超えた分は見出しの「ほか○件」で開く。PC は全部）
+export const HOME_LIMIT = 3;
 const isPending = (e) => e.history.some((r) => r.pending);
 
 // 指標（年をまたぐ）
@@ -76,6 +79,7 @@ function Principles({ year, locked }) {
   const { model, write } = useApp();
   const list = principlesOf(model);
   const [dialog, setDialog] = useState(null);
+  const cap = useCap(list.length, HOME_LIMIT);
 
   const ok = (rows) => rows != null;
   // まとめて足す時は、前に足したものの後ろにつなげる（after がない時は末尾に順に並ぶ）
@@ -112,9 +116,10 @@ function Principles({ year, locked }) {
   const close = () => setDialog(null);
 
   return (
-    <section className="list principles">
+    <section className={`list principles${cap.cls}`}>
       <div className="sec">
         <span>指標</span>
+        {cap.button}
         {!locked && (
           <MoreMenu
             small
@@ -126,10 +131,12 @@ function Principles({ year, locked }) {
           />
         )}
       </div>
-      <p className="note">見たい言葉だけを入れます。手で打つか、アイスバーグの「意識・想い・人生哲学」から選びます（年をまたいで続きます）</p>
-      {list.length === 0 && <p className="note">まだありません</p>}
-      {list.map((e) => (
-        <ItemRow key={e.id} text={e.text} date={dateLine(e)} deleted={!!e.deletedRec} pending={isPending(e)} menu={menuFor(e)} />
+      {/* 説明はまだ無い時だけ（ホームを1画面に収める） */}
+      {list.length === 0 && (
+        <p className="note">まだありません。見たい言葉だけを、手で打つか、アイスバーグの「意識・想い・人生哲学」から選んで入れます（年をまたいで続きます）</p>
+      )}
+      {list.map((e, i) => (
+        <ItemRow key={e.id} className={cap.over(i)} text={e.text} date={dateLine(e)} deleted={!!e.deletedRec} pending={isPending(e)} menu={menuFor(e)} />
       ))}
 
       {dialog?.type === 'add' && <EditDialog title="指標を追加" saveLabel="追加する" onClose={close} onSave={(t) => add([t], dialog.after)} />}
@@ -205,7 +212,7 @@ function HomeHero() {
   );
 }
 
-// ホーム（最初の画面）：上部の道のり、今年の目標・今の四半期の目標と指標（PC は3列）
+// ホーム（最初の画面）：上部の道のり、指標・今年の目標・今の四半期の目標（PC は3列）
 export function HomeScreen() {
   const { readOnly, year, quarter } = useApp();
   // 今の四半期は App が見張っている（開いたまま四半期をまたいでも描き直す）。無い時（試験など）はその場で求める
@@ -216,7 +223,15 @@ export function HomeScreen() {
     <div className="home-screen">
       <HomeHero />
       <div className="home-cols">
-        <GoalSection title="今年の目標" goalYear={year} tags locked={readOnly} emptyText="まだありません。年末年始に振り返りの③で決めます" />
+        <Principles year={year} locked={readOnly} />
+        <GoalSection
+          title="今年の目標"
+          goalYear={year}
+          tags
+          locked={readOnly}
+          limit={HOME_LIMIT}
+          emptyText="まだありません。年末年始に振り返りの③で決めます"
+        />
         <GoalSection
           title={`${q}Qの目標（${QUARTER_MONTHS[q]}）`}
           goalYear={year}
@@ -224,9 +239,9 @@ export function HomeScreen() {
           tags
           toResult={false}
           locked={readOnly}
+          limit={HOME_LIMIT}
           emptyText="まだありません。振り返りの「四半期」で決めます"
         />
-        <Principles year={year} locked={readOnly} />
       </div>
     </div>
   );

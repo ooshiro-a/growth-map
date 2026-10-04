@@ -9,7 +9,7 @@ import { buildModel } from '../src/lib/fold.js';
 import { historyText } from '../src/lib/labels.js';
 import { KIND, LAYER, OP, toRow } from '../src/lib/schema.js';
 import { reviewSteps } from '../src/lib/review.js';
-import { HomeScreen, MAX_STEPS, principlesOf } from '../src/screens/HomeScreen.jsx';
+import { HOME_LIMIT, HomeScreen, MAX_STEPS, principlesOf } from '../src/screens/HomeScreen.jsx';
 import { ids, r, resetNo } from './helpers.js';
 
 afterEach(cleanup);
@@ -105,11 +105,11 @@ describe('ホームの画面', () => {
         </Harness>,
       );
       const sections = [...document.querySelectorAll('.home-screen section')];
-      expect(sections[0].textContent).toContain('作り物の今年の目標');
-      expect(sections[0].textContent).not.toContain('作り物の4Qの目標');
-      expect(sections[1].querySelector('.sec').textContent).toBe('4Qの目標（10〜12月）…');
-      expect([...sections[1].querySelectorAll('.item .tx')].map((x) => x.textContent)).toEqual(['作り物の4Qの目標']);
-      expect(within(sections[1]).getByText('未達', { selector: '.judge-tag' })).toBeTruthy();
+      expect(sections[1].textContent).toContain('作り物の今年の目標');
+      expect(sections[1].textContent).not.toContain('作り物の4Qの目標');
+      expect(sections[2].querySelector('.sec').textContent).toBe('4Qの目標（10〜12月）…');
+      expect([...sections[2].querySelectorAll('.item .tx')].map((x) => x.textContent)).toEqual(['作り物の4Qの目標']);
+      expect(within(sections[2]).getByText('未達', { selector: '.judge-tag' })).toBeTruthy();
       expect(screen.queryByText('作り物の3Qの目標')).toBeNull();
       expect(screen.queryByText('作り物の去年の4Qの目標')).toBeNull();
 
@@ -158,13 +158,47 @@ describe('ホームの画面', () => {
     expect(screen.getByText('作り物の4Qの目標')).toBeTruthy();
   });
 
-  it('目標がない時の案内', () => {
-    render(
+  it('目標・指標がない時の案内。指標の説明は、まだ無い時だけ出す', () => {
+    const { unmount } = render(
       <Harness log={[]}>
         <HomeScreen />
       </Harness>,
     );
     expect(screen.getByText('まだありません。年末年始に振り返りの③で決めます')).toBeTruthy();
+    expect(document.querySelector('.principles .note').textContent).toMatch(/^まだありません。見たい言葉だけを/);
+    unmount();
+    render(
+      <Harness log={[]} initial={[r({ kind: P, id: 'np1', op: OP.ADD, text: '作り物の指標' })]}>
+        <HomeScreen />
+      </Harness>,
+    );
+    expect(document.querySelector('.principles .note')).toBeNull();
+  });
+
+  it(`スマホで各欄に出すのは${HOME_LIMIT}件まで。超えた分は .over（CSS で隠す）、見出しの「ほか○件」で開く・閉じる`, () => {
+    const initial = [];
+    for (let i = 1; i <= 5; i++) initial.push(r({ year: 2026, kind: G, id: `ng${i}`, op: OP.ADD, text: `作り物の目標${i}` }));
+    for (let i = 1; i <= 3; i++) initial.push(r({ kind: P, id: `np${i}`, op: OP.ADD, text: `作り物の指標${i}` }));
+    render(
+      <Harness log={[]} initial={initial}>
+        <HomeScreen />
+      </Harness>,
+    );
+    const [pr, goals] = document.querySelectorAll('.home-screen section');
+    // ちょうど3件の欄は絞らない
+    expect(pr.classList.contains('capped')).toBe(false);
+    expect(pr.querySelector('.cap-more')).toBeNull();
+    expect(pr.querySelectorAll('.item.over')).toHaveLength(0);
+
+    expect(goals.classList.contains('capped')).toBe(true);
+    expect([...goals.querySelectorAll('.item.over .tx')].map((x) => x.textContent)).toEqual(['作り物の目標4', '作り物の目標5']);
+    const more = within(goals).getByRole('button', { name: 'ほか2件' });
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(more);
+    expect(goals.classList.contains('open')).toBe(true);
+    fireEvent.click(within(goals).getByRole('button', { name: '閉じる' }));
+    expect(goals.classList.contains('open')).toBe(false);
+    expect(within(goals).getByRole('button', { name: 'ほか2件' })).toBeTruthy();
   });
 
   it('指標：手で打って足す・この下に足す・編集・削除（灰色）', () => {
@@ -195,7 +229,7 @@ describe('ホームの画面', () => {
     fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: '作り物の指標B' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
     expect(log.at(-1)).toMatchObject({ text: '作り物の指標B', extra: { after: idA } });
-    const texts = () => [...document.querySelectorAll('.home-screen section:last-of-type .item .tx')].map((x) => x.textContent);
+    const texts = () => [...document.querySelectorAll('.home-screen section.principles .item .tx')].map((x) => x.textContent);
     expect(texts()).toEqual(['作り物の指標A', '作り物の指標B', '作り物の指標C']);
 
     openMenu('「作り物の指標B」の操作');
@@ -250,7 +284,7 @@ describe('ホームの画面', () => {
     ]);
     expect(log.at(-1).extra.after).toBeUndefined();
     expect(screen.queryByRole('dialog')).toBeNull();
-    const texts = [...document.querySelectorAll('.home-screen section:last-of-type .item .tx')].map((x) => x.textContent);
+    const texts = [...document.querySelectorAll('.home-screen section.principles .item .tx')].map((x) => x.textContent);
     expect(texts).toEqual(['作り物の考え2', '作り物の考え1', '作り物の考え3']);
 
     // もう一度開くと、足した言葉も入れ済み
@@ -341,14 +375,14 @@ describe('ホームの道のり', () => {
     expect(document.querySelector('.hero-cap').textContent).toBe('道のり最初の一歩は振り返りで書きます');
   });
 
-  it('目標2つと指標は3列の枠に並ぶ（指標は .principles）', () => {
+  it('指標と目標2つは3列の枠に並ぶ（指標が先。.principles）', () => {
     render(
       <Harness log={[]}>
         <HomeScreen />
       </Harness>,
     );
     const cols = document.querySelector('.home-cols');
-    expect([...cols.children].map((x) => x.querySelector('.sec span').textContent)).toEqual(['今年の目標', '4Qの目標（10〜12月）', '指標']);
-    expect(cols.lastElementChild.classList.contains('principles')).toBe(true);
+    expect([...cols.children].map((x) => x.querySelector('.sec span').textContent)).toEqual(['指標', '今年の目標', '4Qの目標（10〜12月）']);
+    expect(cols.firstElementChild.classList.contains('principles')).toBe(true);
   });
 });
