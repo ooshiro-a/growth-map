@@ -8,7 +8,8 @@ import { setClockOffset } from '../src/lib/clock.js';
 import { buildModel } from '../src/lib/fold.js';
 import { historyText } from '../src/lib/labels.js';
 import { KIND, LAYER, OP, toRow } from '../src/lib/schema.js';
-import { HomeScreen, principlesOf } from '../src/screens/HomeScreen.jsx';
+import { reviewSteps } from '../src/lib/review.js';
+import { HomeScreen, MAX_STEPS, principlesOf } from '../src/screens/HomeScreen.jsx';
 import { ids, r, resetNo } from './helpers.js';
 
 afterEach(cleanup);
@@ -283,5 +284,71 @@ describe('ホームの画面', () => {
     expect(screen.queryByRole('button', { name: '指標の操作' })).toBeNull();
     openMenu('「作り物の指標」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+  });
+});
+
+// ---------------------------------------------------------------- 上部の道のり
+const RV = KIND.REVIEW;
+const rv = (year, layer, text) => r({ year, kind: RV, id: `rv-${year}-${layer}`, op: OP.EDIT, layer, text });
+
+describe('ホームの道のり', () => {
+  it('書いた振り返りを古い順に1期1点。同じ年は 1Q→4Q→年の振り返り。空にした・ほかの振り返り（④）は数えない', () => {
+    const rows = [
+      rv(2026, 'q3', '作り物の3Q'),
+      rv(2025, 'review', '作り物の年の振り返り'),
+      rv(2026, 'q1', '作り物の1Q'),
+      rv(2026, 'q1', '作り物の1Q（直した）'),
+      rv(2025, 'q4', '作り物の4Q'),
+      rv(2026, 'q2', '作り物の2Q'),
+      rv(2026, 'q2', '  '),
+      rv(2025, 'resolution', '作り物の抱負'),
+    ];
+    const m = buildModel(rows, [], { currentYear: 2026 });
+    expect(reviewSteps(m).map((x) => x.label)).toEqual(['25年4Qの振り返り', '25年の振り返り', '26年1Qの振り返り', '26年3Qの振り返り']);
+  });
+
+  it('点の数と、いちばん新しい一歩（金）。図は読み上げない', () => {
+    render(
+      <Harness log={[]} initial={[rv(2026, 'q1', '作り物の1Q'), rv(2026, 'q2', '作り物の2Q'), rv(2026, 'q3', '作り物の3Q')]}>
+        <HomeScreen />
+      </Harness>,
+    );
+    const hero = document.querySelector('.home-hero');
+    expect(hero.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+    expect(hero.querySelectorAll('circle.step')).toHaveLength(3);
+    expect(hero.querySelectorAll('circle.step.new')).toHaveLength(1);
+    expect(hero.querySelector('circle.step.new')).toBe(hero.querySelectorAll('circle.step')[2]);
+    expect(hero.querySelector('.hero-cap').textContent).toBe('道のりいちばん新しい一歩：26年3Qの振り返り');
+  });
+
+  it(`点は最大${MAX_STEPS}。古いものから出さない。まだない時の案内`, () => {
+    const rows = [];
+    for (let y = 2022; y <= 2025; y++) for (const l of ['q1', 'q2', 'q3', 'q4', 'review']) rows.push(rv(y, l, `作り物${y}${l}`));
+    const { unmount } = render(
+      <Harness log={[]} initial={rows}>
+        <HomeScreen />
+      </Harness>,
+    );
+    expect(document.querySelectorAll('.home-hero circle.step')).toHaveLength(MAX_STEPS);
+    expect(document.querySelector('.hero-cap b').textContent).toBe('いちばん新しい一歩：25年の振り返り');
+    unmount();
+    render(
+      <Harness log={[]}>
+        <HomeScreen />
+      </Harness>,
+    );
+    expect(document.querySelectorAll('.home-hero circle.step')).toHaveLength(0);
+    expect(document.querySelector('.hero-cap').textContent).toBe('道のり最初の一歩は振り返りで書きます');
+  });
+
+  it('目標2つと指標は3列の枠に並ぶ（指標は .principles）', () => {
+    render(
+      <Harness log={[]}>
+        <HomeScreen />
+      </Harness>,
+    );
+    const cols = document.querySelector('.home-cols');
+    expect([...cols.children].map((x) => x.querySelector('.sec span').textContent)).toEqual(['今年の目標', '4Qの目標（10〜12月）', '指標']);
+    expect(cols.lastElementChild.classList.contains('principles')).toBe(true);
   });
 });

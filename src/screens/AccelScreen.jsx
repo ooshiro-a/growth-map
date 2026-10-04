@@ -40,42 +40,42 @@ export function MotiveChart({ year, quads, prev }) {
     <svg className="motive-chart" viewBox="0 0 260 230" role="img" aria-label={aria}>
       <defs>
         <marker id={`hg${uid}`} viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="#3E7D53" />
+          <path d="M0,0 L8,4 L0,8 z" fill="var(--matsu-tx)" />
         </marker>
         <marker id={`hgr${uid}`} viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="#C9C3B8" />
+          <path d="M0,0 L8,4 L0,8 z" fill="var(--faint)" />
         </marker>
       </defs>
-      <rect x="18" y="14" width="224" height="196" rx="8" fill="#FBFAF6" stroke="#E3DDD1" />
-      <line x1="18" y1={C.y} x2="242" y2={C.y} stroke="#D4CEC2" />
-      <line x1={C.x} y1="14" x2={C.x} y2="210" stroke="#D4CEC2" />
-      <text x="130" y="10" fontSize="10" textAnchor="middle" fill="#6B665D">
+      <rect x="18" y="14" width="224" height="196" rx="8" fill="var(--head)" stroke="var(--line)" />
+      <line x1="18" y1={C.y} x2="242" y2={C.y} stroke="var(--edge)" />
+      <line x1={C.x} y1="14" x2={C.x} y2="210" stroke="var(--edge)" />
+      <text x="130" y="10" fontSize="10" textAnchor="middle" fill="var(--sub)">
         見える
       </text>
-      <text x="130" y="224" fontSize="10" textAnchor="middle" fill="#6B665D">
+      <text x="130" y="224" fontSize="10" textAnchor="middle" fill="var(--sub)">
         見えない
       </text>
-      <text x="22" y="106" fontSize="10" fill="#6B665D">
+      <text x="22" y="106" fontSize="10" fill="var(--sub)">
         他者
       </text>
-      <text x="238" y="106" fontSize="10" textAnchor="end" fill="#6B665D">
+      <text x="238" y="106" fontSize="10" textAnchor="end" fill="var(--sub)">
         自分
       </text>
       {quads.map((x) => (
-        <text key={x.q} x={LABEL_POS[x.q].x} y={LABEL_POS[x.q].y} fontSize="10" textAnchor={LABEL_POS[x.q].anchor} fill="#2A2722">
+        <text key={x.q} x={LABEL_POS[x.q].x} y={LABEL_POS[x.q].y} fontSize="10" textAnchor={LABEL_POS[x.q].anchor} fill="var(--ink)">
           {x.name} {scoreText(x.score)}
         </text>
       ))}
       {prev &&
         MOTIVE_QUADRANTS.filter((q) => prev[q] > 0).map((q) => (
-          <line key={`p${q}`} className="arrow-prev" x1={C.x} y1={C.y} {...tip(q, prev[q])} stroke="#C9C3B8" strokeWidth="3" markerEnd={`url(#hgr${uid})`} />
+          <line key={`p${q}`} className="arrow-prev" x1={C.x} y1={C.y} {...tip(q, prev[q])} stroke="var(--faint)" strokeWidth="3" markerEnd={`url(#hgr${uid})`} />
         ))}
       {quads
         .filter((x) => x.score > 0)
         .map((x) => (
-          <line key={x.q} className="arrow-now" x1={C.x} y1={C.y} {...tip(x.q, x.score)} stroke="#3E7D53" strokeWidth="2.5" markerEnd={`url(#hg${uid})`} />
+          <line key={x.q} className="arrow-now" x1={C.x} y1={C.y} {...tip(x.q, x.score)} stroke="var(--matsu-tx)" strokeWidth="2.5" markerEnd={`url(#hg${uid})`} />
         ))}
-      <circle cx={C.x} cy={C.y} r="3" fill="#2A2722" />
+      <circle cx={C.x} cy={C.y} r="3" fill="var(--ink)" />
     </svg>
   );
 }

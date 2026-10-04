@@ -9,7 +9,7 @@ import { now } from '../lib/clock.js';
 import { icebergYear } from '../lib/iceberg.js';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
-import { QUARTER_MONTHS, currentQuarter } from '../lib/review.js';
+import { QUARTER_MONTHS, currentQuarter, reviewSteps } from '../lib/review.js';
 import { KIND, LAYER, OP, quarterLayer } from '../lib/schema.js';
 import { GoalSection } from './ReviewScreen.jsx';
 
@@ -112,7 +112,7 @@ function Principles({ year, locked }) {
   const close = () => setDialog(null);
 
   return (
-    <section className="list">
+    <section className="list principles">
       <div className="sec">
         <span>指標</span>
         {!locked && (
@@ -151,7 +151,61 @@ function Principles({ year, locked }) {
   );
 }
 
-// ホーム（最初の画面）：今年の目標・今の四半期の目標と指標
+// 上部の道のり：書いた振り返りの数だけ、山の斜面に一歩ずつ点を打つ（いちばん新しい一歩は金）
+// 図は飾り（読み上げない）。文字だけ読む
+const STEP_FROM = { x: 190, y: 204 };
+const STEP_TO = { x: 626, y: 62 };
+export const MAX_STEPS = 11;
+const PAPER = '#f5f2ea';
+
+function HomeHero() {
+  const { model } = useApp();
+  const steps = useMemo(() => reviewSteps(model).slice(-MAX_STEPS), [model]);
+  const latest = steps[steps.length - 1];
+  const at = (i) => ({
+    x: STEP_FROM.x + ((STEP_TO.x - STEP_FROM.x) * i) / (MAX_STEPS - 1),
+    y: STEP_FROM.y + ((STEP_TO.y - STEP_FROM.y) * i) / (MAX_STEPS - 1),
+  });
+  return (
+    <div className="home-hero">
+      <svg viewBox="0 0 1072 300" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">
+        <circle cx="760" cy="70" r="40" fill="var(--gold)" />
+        <polygon points="120,220 640,48 900,220" fill={PAPER} stroke="var(--hero)" strokeWidth="22" strokeLinejoin="round" />
+        <polygon points="120,220 640,48 900,220" fill={PAPER} stroke={PAPER} strokeWidth="12" strokeLinejoin="round" />
+        <rect x="140" y="240" width="740" height="14" rx="7" fill={PAPER} />
+        <rect x="300" y="268" width="420" height="14" rx="7" fill={PAPER} />
+        {steps.map((s, i) => {
+          const p = at(i);
+          const last = i === steps.length - 1;
+          return (
+            <circle
+              key={s.id}
+              className={last ? 'step new' : 'step'}
+              cx={p.x}
+              cy={p.y}
+              r="10"
+              fill={last ? 'var(--gold)' : 'var(--hero)'}
+              stroke={last ? 'var(--hero)' : 'none'}
+              strokeWidth="5"
+            />
+          );
+        })}
+      </svg>
+      <div className="hero-cap">
+        <span>道のり</span>
+        {latest ? (
+          <b>
+            いちばん新しい一歩：<span>{latest.label}</span>
+          </b>
+        ) : (
+          <span>最初の一歩は振り返りで書きます</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ホーム（最初の画面）：上部の道のり、今年の目標・今の四半期の目標と指標（PC は3列）
 export function HomeScreen() {
   const { readOnly, year, quarter } = useApp();
   // 今の四半期は App が見張っている（開いたまま四半期をまたいでも描き直す）。無い時（試験など）はその場で求める
@@ -160,17 +214,20 @@ export function HomeScreen() {
   const q = !cq ? 1 : cq.year === year ? cq.q : cq.year > year ? 4 : 1;
   return (
     <div className="home-screen">
-      <GoalSection title="今年の目標" goalYear={year} tags locked={readOnly} emptyText="まだありません。年末年始に振り返りの③で決めます" />
-      <GoalSection
-        title={`${q}Qの目標（${QUARTER_MONTHS[q]}）`}
-        goalYear={year}
-        layer={quarterLayer(q)}
-        tags
-        toResult={false}
-        locked={readOnly}
-        emptyText="まだありません。振り返りの「四半期」で決めます"
-      />
-      <Principles year={year} locked={readOnly} />
+      <HomeHero />
+      <div className="home-cols">
+        <GoalSection title="今年の目標" goalYear={year} tags locked={readOnly} emptyText="まだありません。年末年始に振り返りの③で決めます" />
+        <GoalSection
+          title={`${q}Qの目標（${QUARTER_MONTHS[q]}）`}
+          goalYear={year}
+          layer={quarterLayer(q)}
+          tags
+          toResult={false}
+          locked={readOnly}
+          emptyText="まだありません。振り返りの「四半期」で決めます"
+        />
+        <Principles year={year} locked={readOnly} />
+      </div>
     </div>
   );
 }

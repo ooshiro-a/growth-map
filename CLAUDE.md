@@ -47,6 +47,7 @@
 - 合言葉：GAS のスクリプトのプロパティ `PASSPHRASE`。画面は POST の本文で送る（URL に載せない）。10回違えば30分止める
   - 合言葉で通った端末には「端末の鍵」（番号＋合言葉で作った署名）を渡し、次からは鍵で通す。止まっている間も鍵は通る。合言葉を変えると全部の鍵が無効
 - 画面の場所はハッシュ（`#/map/iceberg` など）。サーバー側の設定は要らない
+- 色は `src/styles.css`（形）の後に `src/theme.css`（ライト／ダークの色の決まり）を読む。色は変数で書き、直接 `#fff` などを書かない。切り替えは `<html data-theme="auto|light|dark">`、記憶は端末の `gm.theme`（`src/lib/theme.js`。最初の反映は `index.html` の `<head>`）
 - アイコンと manifest は `public/`（`.gitignore` は PNG を1つずつ許可）。差し替えた時は `index.html` の `?v=` を上げる。Service Worker は入れない
 
 ### シート `records` の列（変えない。変える時は「版」を上げる）

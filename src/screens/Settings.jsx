@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { useApp } from '../app-context.js';
 import { ConfirmDialog } from '../components/Modal.jsx';
 import { ItemList } from '../components/ItemList.jsx';
-import { APP_VERSION, ENV_LABEL, GAS_URLS } from '../config.js';
+import { APP_VERSION, ENV_LABEL, GAS_URLS, safeStorage } from '../config.js';
 import { ERROR_TEXT } from '../lib/api.js';
 import { clockOffset, now } from '../lib/clock.js';
 import { formatJpDate, jstParts, toMs } from '../lib/dates.js';
 import { newId } from '../lib/ids.js';
 import { KIND, LAYER, OP, SCHEMA_VERSION } from '../lib/schema.js';
+import { THEMES, loadTheme, setTheme } from '../lib/theme.js';
 import { MapImport } from './MapImport.jsx';
 import { SeedImport } from './SeedImport.jsx';
 
@@ -145,11 +146,36 @@ export function BackupInfo() {
   );
 }
 
+// 画面の色（この端末だけ。シートには書かない）
+function ThemePicker() {
+  const [theme, setLocal] = useState(() => loadTheme(safeStorage()));
+  const pick = (k) => {
+    setTheme(k);
+    setLocal(k);
+  };
+  return (
+    <section className="list">
+      <div className="sec">
+        <span>画面の色</span>
+      </div>
+      <div className="seg theme" role="radiogroup" aria-label="画面の色">
+        {THEMES.map((t) => (
+          <button type="button" key={t.key} role="radio" aria-checked={theme === t.key} className={theme === t.key ? 'on' : ''} onClick={() => pick(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <p className="note">この端末だけの設定です</p>
+    </section>
+  );
+}
+
 export function Settings() {
   const { st, store, env, setEnv, model } = useApp();
   const [confirm, setConfirm] = useState(null);
   return (
     <div className="settings">
+      <ThemePicker />
       <section className="list">
         <div className="sec">
           <span>接続先</span>

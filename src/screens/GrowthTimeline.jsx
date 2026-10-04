@@ -3,7 +3,7 @@ import { useApp } from '../app-context.js';
 import { CHART, TIMELINE_YEARS, chartLayout, deltaText, growthYears } from '../lib/timeline.js';
 
 const ORANGE = '#f07a1a';
-const ORANGE_TEXT = '#a34a0b';
+const ORANGE_TEXT = 'var(--orange-tx)';
 
 // 年表＞アイスバーグ成長年表（直近5年。年を押すと、その年の記録を見るだけで開く）
 export function GrowthTimeline({ onOpen }) {
@@ -26,13 +26,13 @@ export function GrowthTimeline({ onOpen }) {
       <div className="growth-fig">
         <svg viewBox={`0 0 ${c.W} ${c.H}`} width="100%" role="group" aria-label={`アイスバーグ成長年表。${label}`}>
           {Array.from({ length: TIMELINE_YEARS }, (_, i) => (
-            <line key={i} x1={c.x0 + i * c.step} y1={c.base} x2={c.x0 + i * c.step} y2={16} stroke="#c9c3b8" strokeDasharray="2 3" />
+            <line key={i} x1={c.x0 + i * c.step} y1={c.base} x2={c.x0 + i * c.step} y2={16} stroke="var(--faint)" strokeDasharray="2 3" />
           ))}
-          <line x1={c.left} y1={c.base} x2={c.W - 8} y2={c.base} stroke="#2a2722" strokeWidth="1.5" />
-          <path d={`M${c.W - 13} ${c.base - 5} L${c.W - 6} ${c.base} L${c.W - 13} ${c.base + 5}`} fill="none" stroke="#2a2722" strokeWidth="1.5" />
-          <line x1={c.left} y1={c.base} x2={c.left} y2={10} stroke="#2a2722" strokeWidth="1.5" />
-          <path d={`M${c.left - 5} 15 L${c.left} 8 L${c.left + 5} 15`} fill="none" stroke="#2a2722" strokeWidth="1.5" />
-          <text x={c.left + 7} y="16" fontSize="9" fill="#6b665d">
+          <line x1={c.left} y1={c.base} x2={c.W - 8} y2={c.base} stroke="var(--ink)" strokeWidth="1.5" />
+          <path d={`M${c.W - 13} ${c.base - 5} L${c.W - 6} ${c.base} L${c.W - 13} ${c.base + 5}`} fill="none" stroke="var(--ink)" strokeWidth="1.5" />
+          <line x1={c.left} y1={c.base} x2={c.left} y2={10} stroke="var(--ink)" strokeWidth="1.5" />
+          <path d={`M${c.left - 5} 15 L${c.left} 8 L${c.left + 5} 15`} fill="none" stroke="var(--ink)" strokeWidth="1.5" />
+          <text x={c.left + 7} y="16" fontSize="9" fill="var(--sub)">
             大きさ
           </text>
 
@@ -42,8 +42,8 @@ export function GrowthTimeline({ onOpen }) {
                 {p.berg.bands.map((pts, i) => (
                   <polygon key={i} points={pts} fill={['var(--berg-navy)', 'var(--berg-1)', 'var(--berg-2)', 'var(--berg-3)'][i]} />
                 ))}
-                <polygon points={p.berg.outline} fill="none" stroke="var(--berg-navy)" strokeWidth="0.8" strokeLinejoin="round" />
-                <line x1={p.berg.water.x1} y1={p.berg.water.y} x2={p.berg.water.x2} y2={p.berg.water.y} stroke="var(--berg-navy)" strokeWidth="1.2" />
+                <polygon points={p.berg.outline} fill="none" stroke="var(--berg-edge)" strokeWidth="0.8" strokeLinejoin="round" />
+                <line x1={p.berg.water.x1} y1={p.berg.water.y} x2={p.berg.water.x2} y2={p.berg.water.y} stroke="var(--berg-edge)" strokeWidth="1.2" />
               </g>
             ) : null,
           )}
@@ -66,7 +66,7 @@ export function GrowthTimeline({ onOpen }) {
               <text x={p.x + 6} y={p.dotY + 14} fontSize="10" fill={ORANGE_TEXT} fontWeight="700">
                 {p.size}
               </text>
-              <text x={p.x} y={c.base + 17} fontSize="10" textAnchor="middle" fill="#2a2722" fontWeight={i === last ? 700 : 400}>
+              <text x={p.x} y={c.base + 17} fontSize="10" textAnchor="middle" fill="var(--ink)" fontWeight={i === last ? 700 : 400}>
                 {p.year}
               </text>
             </g>

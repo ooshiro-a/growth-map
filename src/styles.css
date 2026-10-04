@@ -97,6 +97,45 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 左上のアイコンと名前（スマホ）。画面の名前は後ろに小さく。PC は左の帯に出す */
+.bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font-weight: 700;
+}
+.bar-brand img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+.bar-brand + .bar-title {
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--sub);
+}
+/* とても狭い画面（360px 未満）はアイコンだけにして、画面の名前を残す */
+@media (max-width: 359px) {
+  .bar-brand .bar-name {
+    display: none;
+  }
+}
+@media (min-width: 768px) {
+  .bar-brand {
+    display: none;
+  }
+  .bar-brand + .bar-title {
+    padding-left: 0;
+    border-left: none;
+    font-size: inherit;
+    font-weight: 700;
+    color: inherit;
+  }
+}
 .bar-r {
   display: flex;
   align-items: center;
@@ -1612,4 +1651,13 @@ a.link-row .note {
   white-space: nowrap;
   padding: 7px 5px;
   font-size: 12.5px;
+}
+
+/* 設定＞画面の色（スマホ幅でも1行） */
+.seg.theme button {
+  white-space: nowrap;
+  min-width: 0;
+}
+.seg.theme button:first-child {
+  flex: 1.45;
 }

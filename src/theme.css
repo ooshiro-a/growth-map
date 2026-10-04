@@ -1,0 +1,248 @@
+/* grops テーマ（ライト/ダーク）
+   src/styles.css の「後」に読み込む（src/main.jsx で import './theme.css'）。
+   <html data-theme="light|dark|auto"> で切り替え。auto（既定）は端末の設定に合わせる。 */
+
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --paper: #f5f2ea;
+  --panel: #fffdf8;
+  --head: #fbf9f3;
+  --ink: #2a2722;
+  --sub: #5d584f;
+  --muted: #8f897e;
+  --date: #a39d92;
+  --gone: #a8a298;
+  --line: rgba(42, 39, 34, 0.12);
+  --line-soft: rgba(42, 39, 34, 0.07);
+  --edge: rgba(42, 39, 34, 0.2); /* ボタン・入力の枠 */
+  --chip: #ece8de; /* 選んでいない切り替え */
+  --field: #fffdf8; /* 入力・小さなボタンの地 */
+  --ai: #23628f;
+  --ai-deep: #1b5079;
+  --ai-tint: #e4edf4;
+  --gold: #e2a63a;
+  --gold-tint: #fbefd6;
+  --primary: var(--ai);
+  --primary-ink: #f5f2ea;
+  --primary-press: var(--ai-deep);
+  --side: #23628f;
+  --side-ink: #f5f2ea;
+  --side-sub: #d4e1eb;
+  --side-on: #1b5079;
+  --hero: #23628f;
+  --matsu-tx: #3e7d53;
+  --matsu-tint: #e6f1ea;
+  --shu-tx: #c64a1e;
+  --shu-tint: #f8e6de;
+  --miss-tint: #eeece7;
+  --warn-tx: #b8431b;
+  --warn-tint: #fcf0eb;
+  --overlay: rgba(20, 18, 14, 0.45);
+  --pop-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #0f2b3f;
+  --panel: #163a54;
+  --head: #12324a;
+  --ink: #f5f2ea;
+  --sub: #c3ced6;
+  --muted: #8ea4b4;
+  --date: #7d93a3;
+  --gone: #6f8798;
+  --line: rgba(245, 242, 234, 0.12);
+  --line-soft: rgba(245, 242, 234, 0.07);
+  --edge: rgba(245, 242, 234, 0.22);
+  --chip: #1d4866;
+  --field: #12324a;
+  --ai-tint: #1d4866;
+  --gold-tint: #4a3a1a;
+  --primary: #f5f2ea;
+  --primary-ink: #0f2b3f;
+  --primary-press: #d9d4c7;
+  --side: #0b2233;
+  --side-ink: #f5f2ea;
+  --side-sub: #afc0cc;
+  --side-on: #163a54;
+  --hero: #0b2233;
+  --matsu-tx: #9ed3ae;
+  --matsu-tint: #1f4a3a;
+  --shu-tx: #f09a78;
+  --shu-tint: #4a2a22;
+  --miss-tint: #24465e;
+  --warn-tx: #f09a78;
+  --warn-tint: #4a2a22;
+  --overlay: rgba(4, 12, 20, 0.6);
+  --pop-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    color-scheme: dark;
+    --paper: #0f2b3f;
+    --panel: #163a54;
+    --head: #12324a;
+    --ink: #f5f2ea;
+    --sub: #c3ced6;
+    --muted: #8ea4b4;
+    --date: #7d93a3;
+    --gone: #6f8798;
+    --line: rgba(245, 242, 234, 0.12);
+    --line-soft: rgba(245, 242, 234, 0.07);
+    --edge: rgba(245, 242, 234, 0.22);
+    --chip: #1d4866;
+    --field: #12324a;
+    --ai-tint: #1d4866;
+    --gold-tint: #4a3a1a;
+    --primary: #f5f2ea;
+    --primary-ink: #0f2b3f;
+    --primary-press: #d9d4c7;
+    --side: #0b2233;
+    --side-ink: #f5f2ea;
+    --side-sub: #afc0cc;
+    --side-on: #163a54;
+    --hero: #0b2233;
+    --matsu-tx: #9ed3ae;
+    --matsu-tint: #1f4a3a;
+    --shu-tx: #f09a78;
+    --shu-tint: #4a2a22;
+    --miss-tint: #24465e;
+    --warn-tx: #f09a78;
+    --warn-tint: #4a2a22;
+    --overlay: rgba(4, 12, 20, 0.6);
+    --pop-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  }
+}
+
+html, body { line-height: 1.6; }
+:focus-visible { outline-color: var(--gold); }
+
+/* 枠：左の帯（PC）と下の切り替え（スマホ） */
+@media (min-width: 768px) {
+  .app { grid-template-columns: 208px minmax(0, 1fr); }
+  .side { background: var(--side); color: var(--side-ink); border-right: none; padding: 18px 12px; gap: 2px; }
+  .side-title { display: flex; align-items: center; gap: 10px; font-size: 18px; letter-spacing: 0.02em; padding: 0 10px 18px; }
+  .side-title img { width: 30px; height: 30px; display: block; }
+  .side-item { color: var(--side-ink); font-size: 14px; padding: 8px 12px 8px 27px; border-radius: 10px; }
+  .side-item.sub { color: var(--side-sub); font-size: 13px; padding: 4px 12px 4px 41px; }
+  .side-item.on { background: var(--side-on); color: var(--side-ink); padding-left: 12px; display: flex; align-items: center; gap: 8px; }
+  .side-item.on::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex: none; }
+  .side-item.sub.on { padding-left: 26px; }
+  .side-item.gear { color: var(--side-sub); }
+  .side-item:hover:not(.on) { background: color-mix(in oklab, var(--side-on) 55%, transparent); }
+  .bar { background: var(--paper); border-bottom: none; padding: 22px 40px 14px; }
+  .bar-l { font-size: 22px; }
+  .body { max-width: 1000px; padding: 8px 40px 32px; margin: 0; }
+}
+.nav { background: var(--panel); }
+.nav button.on { color: var(--ai); }
+:root[data-theme='dark'] .nav button.on { color: var(--gold); }
+@media (prefers-color-scheme: dark) { :root[data-theme='auto'] .nav button.on { color: var(--gold); } }
+
+/* 白で書かれていた所を変数に */
+.list, .gate-box, .yt { background: var(--panel); border-radius: 14px; }
+.more, .menu, .sheet, .btn, .field, .seg button, .judge button, .year-pick, .pick,
+.layer-pick button, .stage-pick button, .score-pick button, .lm-pop, .lm-tg, .berg .pop {
+  background: var(--field);
+  border-color: var(--edge);
+}
+.menu, .sheet { background: var(--panel); }
+.sheet { border-radius: 16px 16px 0 0; }
+@media (min-width: 768px) { .sheet { border-radius: 16px; } }
+.menu, .lm-pop, .berg .pop { box-shadow: var(--pop-shadow); }
+.overlay { background: var(--overlay); }
+.menu button:active { background: var(--ai-tint); }
+
+/* 主ボタン・選択中は藍（ダークは紙色の地に藍の文字） */
+.btn.primary, .seg button.on, .subtabs button.on, .more.on, .seg.quarters button.on, .num {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+.btn.primary:active { background: var(--primary-press); border-color: var(--primary-press); }
+.subtabs button { background: var(--chip); }
+.layer-pick button.on, .stage-pick button.on, .score-pick button.on {
+  border-color: var(--ai);
+  box-shadow: inset 0 0 0 1px var(--ai);
+}
+.pick input { accent-color: var(--ai); }
+
+/* 札 */
+.judge button.ach.on { background: var(--matsu); }
+.judge-tag.ach, .bchip.released, .score-chip { background: var(--matsu-tint); color: var(--matsu-tx); }
+.judge-tag.miss, .score-chip.none, .bchip { background: var(--miss-tint); color: var(--sub); }
+.bchip.facing { background: var(--shu-tint); color: var(--shu-tx); }
+.notice { background: var(--ai-tint); color: var(--ink); }
+.notice.warn, .env-badge { background: var(--warn-tint); color: var(--warn-tx); }
+.lead { background: var(--ai-tint); color: var(--ink); }
+.new-step { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 1px 9px 1px 6px; border-radius: 10px; background: var(--gold-tint); color: var(--ink); }
+.new-step::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+
+/* ホーム（案1c）：上部の道のり */
+.home-hero { position: relative; background: var(--hero); color: #f5f2ea; height: 262px; margin: 0 -40px 24px; }
+.home-hero svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.home-hero .hero-cap { position: absolute; right: 40px; top: 4px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 13px; }
+.home-hero .hero-cap b { color: var(--gold); }
+.home-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.home-cols > .list { background: none; border: none; padding: 0; border-radius: 0; }
+.home-cols .sec { padding-bottom: 4px; border-bottom: 3px solid var(--ai); }
+.home-cols .principles .sec { border-bottom-color: var(--gold); }
+.home-cols .principles .tx { font-weight: 700; }
+:root[data-theme='dark'] .home-cols .sec { border-bottom-color: var(--sub); }
+@media (max-width: 767px) {
+  .home-hero { height: 180px; margin: -10px -16px 16px; }
+  .home-hero .hero-cap { right: 16px; top: 10px; font-size: 11.5px; }
+  .home-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------------------------------------------------------------- 見本に無かった所（ダークでも読めるように） */
+:root,
+:root[data-theme='light'] {
+  --ai-tx: #23628f; /* 藍の文字 */
+  --danger-tx: #b3261e;
+  --orange-tx: #a34a0b; /* 成長年表の点数 */
+  --faint: #c9c3b8; /* 図の薄い線・前の年の矢印 */
+  --berg-edge: var(--berg-navy); /* アイスバーグの外枠・水面（図の中は同じ色） */
+}
+:root[data-theme='dark'] {
+  --ai-tx: #9cc6e4;
+  --danger-tx: #f09a78;
+  --orange-tx: #f5a35c;
+  --faint: #4d6a80;
+  --berg-edge: #c3ced6;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    --ai-tx: #9cc6e4;
+    --danger-tx: #f09a78;
+    --orange-tx: #f5a35c;
+    --faint: #4d6a80;
+    --berg-edge: #c3ced6;
+  }
+}
+.pend { color: var(--warn-tx); }
+.save.warn, .err, .menu button.warn { color: var(--danger-tx); }
+.ok, .brake-count b { color: var(--matsu-tx); }
+.berg-side b { color: var(--shu-tx); }
+.bplan-h, .yt-year { color: var(--ai-tx); }
+.env-badge { border-color: var(--edge); }
+.judge { border-color: var(--edge); }
+.judge button + button { border-left-color: var(--line); }
+.judge button.miss.on { color: var(--paper); }
+.item.del .lead, .item.del .bchip { background: var(--line-soft); }
+.berg .wl { color: var(--berg-edge); }
+.lm-wrap { background-image: radial-gradient(var(--line) 1px, transparent 1px); }
+.lm-root .lm-text { color: #2a2722; } /* 金の地には墨 */
+.lm-node.sel .lm-text { box-shadow: 0 0 0 3px var(--edge); }
+.lm-leaf.sel .lm-text { background: var(--line-soft); }
+.lm-branch.del > .lm-row > .lm-node .lm-text { background: var(--chip); border-bottom-color: var(--edge); }
+.lm-branch.del > .lm-row > .lm-tg { border-color: var(--edge); }
+/* 道のりの右上の文字：太陽に重ならないよう、いちばん新しい一歩は2行に分ける */
+.home-hero .hero-cap { text-align: right; }
+.home-hero .hero-cap b span { display: block; }
+/* ダークの下線：「端末に合わせる」でも同じに。指標は金のまま */
+@media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .sec { border-bottom-color: var(--sub); } }
+:root[data-theme='dark'] .home-cols .principles .sec { border-bottom-color: var(--gold); }
+@media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .principles .sec { border-bottom-color: var(--gold); } }

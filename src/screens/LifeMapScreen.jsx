@@ -223,7 +223,11 @@ export function LifeMapScreen() {
       const w = el.scrollWidth;
       const h = el.scrollHeight;
       const scale = Math.max(1, Math.min(2, Math.sqrt(14000000 / (w * h))));
-      const canvas = await html2canvas(el, { backgroundColor: PAPER, scale, logging: false });
+      // ダークで開いていても、PDF は紙の色（ライト）で撮る
+      const light = (doc) => {
+        doc.documentElement.dataset.theme = 'light';
+      };
+      const canvas = await html2canvas(el, { backgroundColor: PAPER, scale, logging: false, onclone: light });
       const pdf = new jsPDF({ orientation: w >= h ? 'landscape' : 'portrait', unit: 'px', format: [w, h], hotfixes: ['px_scaling'], compress: true });
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, h, undefined, 'FAST');
       const p = jstParts(now());

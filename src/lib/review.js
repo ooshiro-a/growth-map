@@ -89,6 +89,21 @@ export function reviewEntry(model, year, layer) {
   return model.flat(KIND.REVIEW).entities.get(reviewId(year, layer)) || null;
 }
 
+// ホームの道のり：書いた振り返り（四半期 q1〜q4 と年の②）を古い順に。1つの期は1点
+// 同じ年は 1Q→4Q→年の振り返り の順。文言が空・削除したものは数えない
+const STEP_ID = /^rv-(\d{4})-(q[1-4]|review)$/;
+export function reviewSteps(model) {
+  const out = [];
+  for (const [id, e] of model.flat(KIND.REVIEW).entities) {
+    const m = STEP_ID.exec(id);
+    if (!m || e.deletedRec || !String(e.text || '').trim()) continue;
+    const year = Number(m[1]);
+    const q = m[2] === 'review' ? null : Number(m[2][1]);
+    out.push({ id, year, q, label: `${String(year).slice(-2)}年${q ? `${q}Q` : ''}の振り返り` });
+  }
+  return out.sort((a, b) => a.year - b.year || (a.q || 5) - (b.q || 5));
+}
+
 // ---------------------------------------------------------------- 長期（年をまたぐ）
 export const ROADMAP_PARTS = [
   { layer: LAYER.ROADMAP_WORK, label: '仕事面' },

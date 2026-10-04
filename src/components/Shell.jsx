@@ -3,6 +3,9 @@ import { APP_NAME, ENV_LABEL } from '../config.js';
 import { ERROR_TEXT } from '../lib/api.js';
 import { ErrorBoundary } from './ErrorBoundary.jsx';
 
+// 左上のアイコン（public/。PC は左の帯、スマホは上の帯）
+const ICON = `${import.meta.env.BASE_URL}icon-192.png`;
+
 export const TABS = [
   { key: 'home', label: 'ホーム', path: 'home' },
   { key: 'map', label: '成長の地図', path: 'map/iceberg' },
@@ -70,7 +73,10 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
   return (
     <div className="app">
       <aside className="side" aria-label="画面の切り替え">
-        <div className="side-title">{APP_NAME}</div>
+        <div className="side-title">
+          <img src={ICON} alt="" />
+          {APP_NAME}
+        </div>
         {TABS.map((t) => (
           <div key={t.key}>
             <button type="button" className={`side-item${tab === t.key && !SUBTABS[t.key] ? ' on' : ''}`} onClick={() => go(t.path)}>
@@ -96,6 +102,10 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
       <div className="main">
         <header className="bar">
           <div className="bar-l">
+            <span className="bar-brand" title={APP_NAME}>
+              <img src={ICON} alt="" />
+              <span className="bar-name">{APP_NAME}</span>
+            </span>
             <b className="bar-title">{title}</b>
             {env === 'test' && <span className="env-badge">{ENV_LABEL.test}</span>}
           </div>

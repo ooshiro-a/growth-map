@@ -27,6 +27,8 @@ function makeMeasure() {
 }
 
 const NAVY = '#1b2a6b';
+// 外枠・水面・頂の点線は変数（ダークの地でも形が見える）。図の中の色は同じ
+const EDGE = 'var(--berg-edge)';
 const WIDE_MAX = 520; // PC の図の幅の上限
 const PHONE_MAX = 440; // スマホの形（縦長）の図の幅の上限（広げても下が空くだけ）
 const SIDE_GAP = 16;
@@ -121,14 +123,14 @@ export function Iceberg({ data, wide = false, menuFor, dateOf, onTip, onChip }) 
             {band(water, div1, 'var(--berg-1)')}
             {band(div1, div2, 'var(--berg-2)')}
             {band(div2, H, 'var(--berg-3)')}
-            <polygon points={`${cx},0.8 ${W - 0.8},${H - 0.8} 0.8,${H - 0.8}`} fill="none" stroke={NAVY} strokeWidth="1.3" strokeLinejoin="round" />
+            <polygon points={`${cx},0.8 ${W - 0.8},${H - 0.8} 0.8,${H - 0.8}`} fill="none" stroke={EDGE} strokeWidth="1.3" strokeLinejoin="round" />
             {across(div1)}
             {across(div2)}
             {across(dashed, { strokeDasharray: '3 2' })}
             <line x1={cx} y1={div1} x2={cx} y2={dashed} stroke={NAVY} strokeWidth="1" />
             <line x1={cx} y1={colTop - 1} x2={cx} y2={div2} stroke={NAVY} strokeWidth="1" />
-            <line x1={Math.max(0, cx - hw(water) - ext)} y1={water} x2={Math.min(W, cx + hw(water) + ext)} y2={water} stroke={NAVY} strokeWidth="2.5" />
-            {wide && tip && <line x1={tip.x + tip.w + 8} y1={tipMid} x2={W} y2={tipMid} stroke={NAVY} strokeWidth="0.8" strokeDasharray="2 2" />}
+            <line x1={Math.max(0, cx - hw(water) - ext)} y1={water} x2={Math.min(W, cx + hw(water) + ext)} y2={water} stroke={EDGE} strokeWidth="2.5" />
+            {wide && tip && <line x1={tip.x + tip.w + 8} y1={tipMid} x2={W} y2={tipMid} stroke={EDGE} strokeWidth="0.8" strokeDasharray="2 2" />}
           </svg>
           <span className="wl" style={{ left: Math.max(0, cx - hw(water) - ext), top: water - 13 }}>
             水面
