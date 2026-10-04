@@ -169,7 +169,7 @@ describe('年ごとの記録', () => {
       </Harness>,
     );
     expect(screen.getByText('作り物の理念')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '自分軸・理念の操作' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '自分理念・自分軸アクセルの操作' })).toBeNull();
 
     rerender(
       <Harness rows={rows()}>

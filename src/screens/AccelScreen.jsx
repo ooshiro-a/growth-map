@@ -35,7 +35,7 @@ function tip(q, s) {
 
 export function MotiveChart({ year, quads, prev }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
-  const aria = `動機の四象限。${year}年は${quads.map((x) => `${x.name}${scoreText(x.score)}`).join('、')}${prev ? `。灰色は${year - 1}年` : ''}`;
+  const aria = `${MOTIVE_NAME}。${year}年は${quads.map((x) => `${x.name}${scoreText(x.score)}`).join('、')}${prev ? `。灰色は${year - 1}年` : ''}`;
   return (
     <svg className="motive-chart" viewBox="0 0 260 230" role="img" aria-label={aria}>
       <defs>
@@ -117,6 +117,10 @@ function ScoreDialog({ name, value, onSave, onClose }) {
   );
 }
 
+// 欄の名前（画面に出す名前。記録の種類「自分軸」「動機」は変えない）
+export const AXIS_NAME = '自分理念・自分軸アクセル';
+export const MOTIVE_NAME = '動機アクセル';
+
 // 右上の「＋追加」：足す先（自分軸・理念／4つの区分）を選んで文言を打つ
 function AddDialog({ onSave, onClose }) {
   const [target, setTarget] = useState(AXIS_TARGET);
@@ -127,7 +131,7 @@ function AddDialog({ onSave, onClose }) {
     if (onSave(target, clean) === false) return;
     onClose();
   };
-  const targets = [[AXIS_TARGET, '自分軸・理念'], ...MOTIVE_QUADRANTS.map((q) => [q, `動機：${QUADRANT_NAME[q]}`])];
+  const targets = [[AXIS_TARGET, AXIS_NAME], ...MOTIVE_QUADRANTS.map((q) => [q, `動機：${QUADRANT_NAME[q]}`])];
   return (
     <Modal
       title="追加する"
@@ -216,8 +220,8 @@ export function AccelScreen({ year, viewOnly = false }) {
 
       <section className="list">
         <div className="sec">
-          <span>自分軸・理念</span>
-          {!locked && <MoreMenu small label="自分軸・理念の操作" items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', kind: AX }) }]} />}
+          <span>{AXIS_NAME}</span>
+          {!locked && <MoreMenu small label={`${AXIS_NAME}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', kind: AX }) }]} />}
         </div>
         <p className="note">大切な言葉・価値観。ホームの「指標」とは別に持ちます</p>
         {axis.length === 0 && <p className="note">まだありません</p>}
@@ -226,7 +230,7 @@ export function AccelScreen({ year, viewOnly = false }) {
 
       <section className="list">
         <div className="sec">
-          <span>動機の四象限</span>
+          <span>{MOTIVE_NAME}</span>
           <span className="lgd">
             緑＝{year}年{motive.prev && `　灰＝${year - 1}年`}
           </span>
@@ -254,7 +258,7 @@ export function AccelScreen({ year, viewOnly = false }) {
       {dialog?.type === 'addAny' && <AddDialog onClose={close} onSave={(t, text) => (t === AXIS_TARGET ? addAxis(text) : addMotive(t, text))} />}
       {dialog?.type === 'add' && (
         <EditDialog
-          title={dialog.kind === AX ? '自分軸・理念を追加' : `${QUADRANT_NAME[dialog.q]}に追加`}
+          title={dialog.kind === AX ? `${AXIS_NAME}に追加` : `${QUADRANT_NAME[dialog.q]}に追加`}
           saveLabel="追加する"
           onClose={close}
           onSave={(t) => (dialog.kind === AX ? addAxis(t, dialog.after) : addMotive(dialog.q, t, dialog.after))}

@@ -106,19 +106,19 @@ describe('アクセルの画面', () => {
       </Harness>,
     );
     expect(screen.getByText('まだありません')).toBeTruthy();
-    openMenu('自分軸・理念の操作');
+    openMenu('自分理念・自分軸アクセルの操作');
     choose('追加する');
-    typeAndSave('自分軸・理念を追加', '作り物の理念A');
+    typeAndSave('自分理念・自分軸アクセルに追加', '作り物の理念A');
     expect(log.at(-1)).toMatchObject({ year: 2026, kind: '自分軸', op: '追加', text: '作り物の理念A' });
     expect(log.at(-1).extra).toBeUndefined();
     const idA = log.at(-1).id;
 
-    openMenu('自分軸・理念の操作');
+    openMenu('自分理念・自分軸アクセルの操作');
     choose('追加する');
-    typeAndSave('自分軸・理念を追加', '作り物の理念C');
+    typeAndSave('自分理念・自分軸アクセルに追加', '作り物の理念C');
     openMenu('「作り物の理念A」の操作');
     choose('この下に追加');
-    typeAndSave('自分軸・理念を追加', '作り物の理念B');
+    typeAndSave('自分理念・自分軸アクセルに追加', '作り物の理念B');
     expect(log.at(-1)).toMatchObject({ kind: '自分軸', extra: { after: idA } });
     expect(axisTexts()).toEqual(['作り物の理念A', '作り物の理念B', '作り物の理念C']);
 
@@ -144,8 +144,8 @@ describe('アクセルの画面', () => {
         <AccelScreen year={2026} />
       </Harness>,
     );
-    const chart = screen.getByRole('img', { name: /動機の四象限/ });
-    expect(chart.getAttribute('aria-label')).toBe('動機の四象限。2026年は自分×見える7、他者×見える0、自分×見えない—、他者×見えない—');
+    const chart = screen.getByRole('img', { name: /動機アクセル/ });
+    expect(chart.getAttribute('aria-label')).toBe('動機アクセル。2026年は自分×見える7、他者×見える0、自分×見えない—、他者×見えない—');
     // 0点と点数なしには矢印を描かない
     expect(chart.querySelectorAll('.arrow-now')).toHaveLength(1);
     expect(chart.querySelectorAll('.arrow-prev')).toHaveLength(0);
@@ -195,7 +195,7 @@ describe('アクセルの画面', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: '＋追加' }));
     let dialog = screen.getByRole('dialog', { name: '追加する' });
-    expect(within(dialog).getByRole('radio', { name: '自分軸・理念' }).getAttribute('aria-checked')).toBe('true');
+    expect(within(dialog).getByRole('radio', { name: '自分理念・自分軸アクセル' }).getAttribute('aria-checked')).toBe('true');
     typeAndSave('追加する', '作り物の理念');
     expect(log.at(-1)).toMatchObject({ kind: '自分軸', op: '追加', text: '作り物の理念' });
 
@@ -228,7 +228,7 @@ describe('アクセルの画面', () => {
       </Harness>,
     );
     expect(screen.queryByRole('button', { name: '＋追加' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '自分軸・理念の操作' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '自分理念・自分軸アクセルの操作' })).toBeNull();
     openMenu('「作り物の理念」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
     fireEvent.keyDown(document, { key: 'Escape' });
