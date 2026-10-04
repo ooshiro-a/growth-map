@@ -18,6 +18,11 @@ mockup*.html
 *.JPG
 *.png
 *.PNG
+# アプリのアイコン（公開してよい画像）
+!public/icon-32.png
+!public/apple-touch-icon.png
+!public/icon-192.png
+!public/icon-512.png
 *.pdf
 # アイコンなど、公開してよい画像を足す時は「!public/icon.png」のように1つずつ許可する
 
