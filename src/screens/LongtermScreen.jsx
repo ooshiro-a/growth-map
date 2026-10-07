@@ -299,15 +299,17 @@ export function LongtermScreen() {
   const lt = useLongtermWrite();
   const [dialog, setDialog] = useState(null);
   const [sorting, setSorting] = useState(null); // 並べ替え中の面の層
+  const part = ({ layer, label }) =>
+    sorting === layer && !readOnly ? (
+      <SortPart key={layer} label={label} layer={layer} onDone={() => setSorting(null)} />
+    ) : (
+      <Part key={layer} label={label} layer={layer} locked={readOnly} onSort={() => setSorting(layer)} setDialog={setDialog} />
+    );
   return (
     <div className="longterm-screen">
-      {PARTS.map(({ layer, label }) =>
-        sorting === layer && !readOnly ? (
-          <SortPart key={layer} label={label} layer={layer} onDone={() => setSorting(null)} />
-        ) : (
-          <Part key={layer} label={label} layer={layer} locked={readOnly} onSort={() => setSorting(layer)} setDialog={setDialog} />
-        ),
-      )}
+      {part(PARTS[0])}
+      {/* 仕事面・プライベート面：PC は左右に並べる（スマホは縦） */}
+      <div className="plan-cols">{PARTS.slice(1).map(part)}</div>
       <p className="note">ありたい姿は時期の遠い順（ありたい姿から逆算）に並べると見やすくなります。「…」→「並べ替える」で順番を変えられます</p>
       <Dialogs dialog={dialog} setDialog={setDialog} lt={lt} />
     </div>

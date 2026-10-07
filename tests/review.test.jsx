@@ -641,8 +641,10 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    const lists = () => [...document.querySelectorAll('.longterm-screen > .list')];
+    const lists = () => [...document.querySelectorAll('.longterm-screen .list')];
     expect(lists().map((x) => x.querySelector('.sec span').textContent)).toEqual(['習得すべきスキル', '仕事面', 'プライベート面']);
+    // 仕事面・プライベート面は左右に並べる枠の中（習得すべきスキルは外で横幅いっぱい）
+    expect(lists().map((x) => x.parentElement.className)).toEqual(['longterm-screen', 'plan-cols', 'plan-cols']);
     const texts = () => [...lists()[0].querySelectorAll('.item .tx')].map((x) => x.textContent);
     // 1つだけの時は並べ替えを出さない
     openMenu('「作り物の習得スキルA」の操作');
@@ -709,7 +711,7 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    const top = () => [...document.querySelectorAll('.longterm-screen > .list')][0];
+    const top = () => [...document.querySelectorAll('.longterm-screen .list')][0];
     const subs = () => [...top().querySelectorAll('.skill .tx')].map((x) => x.textContent);
     expect(top().querySelectorAll('.note')[0].textContent).toBe('（「…」→「サブスキルを追加」）');
 
@@ -785,7 +787,7 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    const work = () => [...document.querySelectorAll('.longterm-screen > .list')][1];
+    const work = () => [...document.querySelectorAll('.longterm-screen .list')][1];
     const texts = () => [...work().querySelectorAll('.vision > .item .tx')].map((x) => x.textContent);
     // 1つしかない面には出さない
     openMenu('プライベート面の操作');
