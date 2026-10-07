@@ -375,9 +375,27 @@ button:disabled {
 .rv:focus-visible .date {
   display: block;
 }
+/* PC：行の下に小さな吹き出しで重ねて出す。行の高さを変えないので、下の項目と「…」が動かない（押した先がずれない） */
 @media (hover: hover) {
   .rv:hover .date {
     display: block;
+  }
+  .rv:hover:not(.show):not(:focus-visible) .date {
+    position: absolute;
+    top: calc(100% - 4px);
+    left: 0;
+    z-index: 5;
+    margin: 0;
+    padding: 1px 7px;
+    white-space: nowrap;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: var(--pop-shadow);
+    pointer-events: none;
+  }
+  .size.rv {
+    position: relative;
   }
 }
 .pend {
