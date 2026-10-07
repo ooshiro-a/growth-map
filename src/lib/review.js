@@ -115,14 +115,18 @@ export function roadmapItems(model, layer) {
   return model.list(model.flat(KIND.LONGTERM), `L:${layer}`);
 }
 
-// 習得すべきスキル（面の上の1段の一覧）
-export const longSkills = (model) => model.list(model.flat(KIND.LONGTERM), `L:${LAYER.LONG_SKILL}`);
-
-// ありたい姿の下の必要なスキルや考え方など。スキルの削除は親の姿の削除も含める
-export function roadmapSkills(model, item) {
+// 親の下の段（層 layer）。削除は親の削除も含める
+export function childItems(model, item, layer) {
   const v = model.flat(KIND.LONGTERM);
   return model
     .list(v, `P:${item.id}`)
-    .filter((s) => s.layer === LAYER.ROADMAP_SKILL)
+    .filter((s) => s.layer === layer)
     .map((s) => ({ e: s, deleted: model.deletedInfo(v, s) }));
 }
+
+// ありたい姿の下の必要なスキルや考え方など
+export const roadmapSkills = (model, item) => childItems(model, item, LAYER.ROADMAP_SKILL);
+
+// 習得すべきスキル（いちばん上の欄）と、その下のサブスキル
+export const longSkills = (model) => roadmapItems(model, LAYER.LONG_SKILL);
+export const longSubs = (model, item) => childItems(model, item, LAYER.LONG_SUB);

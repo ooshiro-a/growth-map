@@ -5,19 +5,26 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
-import { GRAY_NOTE, SORT_LABEL, SortHead, SortList, SortRow, shift } from '../components/Sort.jsx';
+import { GRAY_NOTE, SORT_LABEL, SortHead, SortRow, shift } from '../components/Sort.jsx';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
-import { canSortItems, orderMoves } from '../lib/order.js';
-import { ROADMAP_PARTS, longSkills, roadmapItems, roadmapSkills } from '../lib/review.js';
+import { orderMoves } from '../lib/order.js';
+import { ROADMAP_PARTS, childItems, roadmapItems } from '../lib/review.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
 
 const K = KIND.LONGTERM;
 const SKILL = LAYER.ROADMAP_SKILL;
 const LONG = LAYER.LONG_SKILL;
+const SUB = LAYER.LONG_SUB;
 const LONG_LABEL = '習得すべきスキル';
 const SKILL_LABEL = '必要なスキルや考え方など';
-const isVision = (e) => ROADMAP_PARTS.some((p) => p.layer === e.layer);
+const SUB_LABEL = 'サブスキル';
+// 上から：習得すべきスキル（＞サブスキル）、仕事面・プライベート面（＞必要なスキルや考え方など）
+const PARTS = [{ layer: LONG, label: LONG_LABEL }, ...ROADMAP_PARTS];
+// 親の層 → 下の段の層・親の呼び名
+const CHILD = { [LAYER.ROADMAP_WORK]: SKILL, [LAYER.ROADMAP_PRIVATE]: SKILL, [LONG]: SUB };
+const OWNER = { [LAYER.ROADMAP_WORK]: '姿', [LAYER.ROADMAP_PRIVATE]: '姿', [LONG]: 'スキル' };
+const NAME = { [SKILL]: SKILL_LABEL, [LONG]: LONG_LABEL, [SUB]: SUB_LABEL };
 const isPending = (e) => e.history.some((r) => r.pending);
 
 // 入れる欄（text は必須、ほかは空でもよい）
@@ -30,8 +37,11 @@ const FIELDS = {
   [LAYER.ROADMAP_PRIVATE]: VISION,
   [SKILL]: [{ key: 'text', label: SKILL_LABEL }],
   [LONG]: [{ key: 'text', label: LONG_LABEL }],
+  [SUB]: [{ key: 'text', label: SUB_LABEL }],
 };
-const nameOf = (layer) => (layer === SKILL ? SKILL_LABEL : layer === LONG ? LONG_LABEL : 'ありたい姿');
+const nameOf = (layer) => NAME[layer] || 'ありたい姿';
+// 親の項目なら「この姿の必要なスキルや考え方なども」などの言い回し。下の段の項目は ''
+const kidsOf = (e) => (CHILD[e.layer] ? `この${OWNER[e.layer]}の${NAME[CHILD[e.layer]]}も` : '');
 
 // 追加・編集の小窓（複数の欄）。onSave が false を返したら閉じない
 function FieldsDialog({ title, layer, entity = null, saveLabel, onSave, onClose }) {
@@ -128,30 +138,30 @@ function Dialogs({ dialog, setDialog, lt }) {
   if (!dialog) return null;
   const close = () => setDialog(null);
   const { type, e, layer, after, parent } = dialog;
-  const vision = e && isVision(e);
+  const kids = e ? kidsOf(e) : '';
   if (type === 'add') return <FieldsDialog title={`${nameOf(layer)}を追加`} layer={layer} saveLabel="追加する" onSave={(v) => lt.add(layer, v, { after, parent })} onClose={close} />;
   if (type === 'edit') return <FieldsDialog title={`${nameOf(e.layer)}を編集`} layer={e.layer} entity={e} saveLabel="保存する" onSave={(v) => lt.edit(e, v)} onClose={close} />;
   if (type === 'del')
     return (
       <ConfirmDialog
         title="削除する"
-        message={`「${e.text}」を削除します。消さずに灰色で残ります。${vision ? `この姿の${SKILL_LABEL}も灰色になります。` : ''}`}
+        message={`「${e.text}」を削除します。消さずに灰色で残ります。${kids && `${kids}灰色になります。`}`}
         okLabel="削除する"
         warn
         onOk={() => lt.remove(e)}
         onClose={close}
       />
     );
-  if (type === 'purge') return <PurgeDialog e={e} note={vision ? `この姿の${SKILL_LABEL}もいっしょに消えます。` : ''} onClose={close} />;
+  if (type === 'purge') return <PurgeDialog e={e} note={kids && `${kids}いっしょに消えます。`} onClose={close} />;
   if (type === 'hist') return <HistorySheet kind={K} id={e.id} title={e.text} onClose={close} />;
   return null;
 }
 
-// 並べ替えの下書き：生きている姿と、その下の生きているスキルの番号
+// 並べ替えの下書き：生きている親と、その下の生きている項目の番号
 function liveOrder(model, layer) {
   const top = roadmapItems(model, layer).filter((e) => !e.deletedRec);
   const kids = {};
-  for (const e of top) kids[e.id] = roadmapSkills(model, e).filter((s) => !s.deleted).map((s) => s.e.id);
+  for (const e of top) kids[e.id] = childItems(model, e, CHILD[layer]).filter((s) => !s.deleted).map((s) => s.e.id);
   return { top: top.map((e) => e.id), kids };
 }
 const canSort = (o) => o.top.length > 1 || Object.values(o.kids).some((k) => k.length > 1);
@@ -171,7 +181,7 @@ function SortPart({ label, layer, onDone }) {
   const save = () => {
     if (lt.move(moves)) onDone();
   };
-  const hasGray = roadmapItems(model, layer).some((e) => e.deletedRec || roadmapSkills(model, e).some((s) => s.deleted));
+  const hasGray = roadmapItems(model, layer).some((e) => e.deletedRec || childItems(model, e, CHILD[layer]).some((s) => s.deleted));
   return (
     <section className="list sorting" aria-label={`${label}の並べ替え`}>
       <SortHead label={label} canSave={moves.length > 0} onCancel={onDone} onSave={save} />
@@ -202,10 +212,12 @@ function SortPart({ label, layer, onDone }) {
   );
 }
 
-// 1つの面：時期＋ありたい姿、その下に必要なスキルや考え方など
+// 1つの面：親（時期＋ありたい姿／習得すべきスキル）と、その下の段（必要なスキルや考え方など／サブスキル）
 function Part({ label, layer, locked, onSort, setDialog }) {
   const { model } = useApp();
   const items = roadmapItems(model, layer);
+  const child = CHILD[layer];
+  const childName = NAME[child];
   const sortable = !locked && canSort(liveOrder(model, layer));
   const hist = (e) => ({ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) });
   const purge = (e) => ({ label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) });
@@ -217,7 +229,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
       ? [hist(e), purge(e)]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
-          { label: `${SKILL_LABEL}を追加`, onSelect: () => setDialog({ type: 'add', layer: SKILL, parent: e.id }) },
+          { label: `${childName}を追加`, onSelect: () => setDialog({ type: 'add', layer: child, parent: e.id }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: e.layer, after: e.id }) },
           ...sortItem,
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
@@ -231,7 +243,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
       ? [hist(s), purge(s)]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e: s }) },
-          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: SKILL, parent: s.parent, after: s.id }) },
+          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: child, parent: s.parent, after: s.id }) },
           ...sortItem,
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e: s }) },
           hist(s),
@@ -247,7 +259,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
       </div>
       {items.length === 0 && <p className="note">まだありません</p>}
       {items.map((e) => {
-        const skills = roadmapSkills(model, e);
+        const skills = childItems(model, e, child);
         return (
           <div key={e.id} className={`vision${e.deletedRec ? ' del' : ''}`}>
             <ItemRow
@@ -260,7 +272,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
             />
             {(skills.length > 0 || !(locked || e.deletedRec)) && (
               <div className="means skills">
-                {skills.length === 0 && <p className="note">（「…」→「{SKILL_LABEL}を追加」）</p>}
+                {skills.length === 0 && <p className="note">（「…」→「{childName}を追加」）</p>}
                 {skills.map(({ e: s, deleted }) => (
                   <ItemRow
                     key={s.id}
@@ -281,46 +293,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
   );
 }
 
-// 習得すべきスキル（面の上の1段の一覧。長期的に身に付けるスキルを見えるようにする）
-function LongSkills({ locked, setDialog }) {
-  const { model } = useApp();
-  const lt = useLongtermWrite();
-  const [sorting, setSorting] = useState(false);
-  const items = longSkills(model);
-  const sortItem = !locked && canSortItems(items) ? [{ label: SORT_LABEL, onSelect: () => setSorting(true) }] : [];
-  if (sorting && !locked) return <SortList label={LONG_LABEL} items={items} onSave={lt.move} onDone={() => setSorting(false)} />;
-  const hist = (e) => ({ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) });
-  const purge = (e) => ({ label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) });
-  const menu = (e) =>
-    locked
-      ? [hist(e)]
-      : e.deletedRec
-      ? [hist(e), purge(e)]
-      : [
-          { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
-          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: LONG, after: e.id }) },
-          ...sortItem,
-          { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
-          hist(e),
-          purge(e),
-        ];
-  return (
-    <section className="list">
-      <div className="sec">
-        <span>{LONG_LABEL}</span>
-        {!locked && (
-          <MoreMenu small label={`${LONG_LABEL}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', layer: LONG }) }, ...sortItem]} />
-        )}
-      </div>
-      {items.length === 0 && <p className="note">まだありません</p>}
-      {items.map((e) => (
-        <ItemRow key={e.id} text={e.text} date={dateLine(e)} deleted={!!e.deletedRec} pending={isPending(e)} menu={menu(e)} />
-      ))}
-    </section>
-  );
-}
-
-// 長期プラン（年をまたぐ）：習得すべきスキル、仕事面／プライベート面 ＞ 時期＋ありたい姿 ＞ 必要なスキルや考え方など
+// 長期プラン（年をまたぐ）：習得すべきスキル ＞ サブスキル、仕事面／プライベート面 ＞ 時期＋ありたい姿 ＞ 必要なスキルや考え方など
 export function LongtermScreen() {
   const { readOnly } = useApp();
   const lt = useLongtermWrite();
@@ -328,8 +301,7 @@ export function LongtermScreen() {
   const [sorting, setSorting] = useState(null); // 並べ替え中の面の層
   return (
     <div className="longterm-screen">
-      <LongSkills locked={readOnly} setDialog={setDialog} />
-      {ROADMAP_PARTS.map(({ layer, label }) =>
+      {PARTS.map(({ layer, label }) =>
         sorting === layer && !readOnly ? (
           <SortPart key={layer} label={label} layer={layer} onDone={() => setSorting(null)} />
         ) : (

@@ -629,7 +629,7 @@ describe('長期プランの画面', () => {
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
-  it('習得すべきスキル：面の上の1段の一覧。追加・この下に追加・編集・並べ替え・削除（灰色）', () => {
+  it('習得すべきスキル：いちばん上の欄。追加・この下に追加・編集・並べ替え・削除（灰色）', () => {
     const log = [];
     const S = LAYER.LONG_SKILL;
     const initial = [
@@ -648,6 +648,7 @@ describe('長期プランの画面', () => {
     openMenu('「作り物の習得スキルA」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
       '編集する',
+      'サブスキルを追加',
       'この下に追加',
       '削除する（灰色で残る）',
       '履歴を見る',
@@ -688,10 +689,81 @@ describe('長期プランの画面', () => {
     openMenu('「作り物の習得スキルA」の操作');
     choose('削除する（灰色で残る）');
     dialog = screen.getByRole('dialog');
-    expect(dialog.textContent).not.toContain('この姿の');
+    expect(dialog.textContent).toContain('このスキルのサブスキルも灰色になります。');
     fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }));
     expect(screen.getByText('作り物の習得スキルA').closest('.item').className).toContain('del');
     openMenu('「作り物の習得スキルA」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
+  });
+
+  it('サブスキル：習得すべきスキルの下に足し、編集・この下に追加・並べ替え・削除。親を削除するとサブスキルも灰色', () => {
+    const log = [];
+    const S = LAYER.LONG_SKILL;
+    const U = LAYER.LONG_SUB;
+    const initial = [
+      r({ kind: L, id: 'nk1', op: OP.ADD, layer: S, text: '作り物の習得スキルA' }),
+      r({ kind: L, id: 'nk2', op: OP.ADD, layer: S, text: '作り物の習得スキルB' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <LongtermScreen />
+      </Harness>,
+    );
+    const top = () => [...document.querySelectorAll('.longterm-screen > .list')][0];
+    const subs = () => [...top().querySelectorAll('.skill .tx')].map((x) => x.textContent);
+    expect(top().querySelectorAll('.note')[0].textContent).toBe('（「…」→「サブスキルを追加」）');
+
+    openMenu('「作り物の習得スキルA」の操作');
+    choose('サブスキルを追加');
+    let dialog = screen.getByRole('dialog', { name: 'サブスキルを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'サブスキル' }), { target: { value: '作り物のサブ1' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '長期', op: '追加', layer: 'longSub', parent: 'nk1', year: '', text: '作り物のサブ1' });
+
+    openMenu('「作り物のサブ1」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
+      '編集する',
+      'この下に追加',
+      '並べ替える',
+      '削除する（灰色で残る）',
+      '履歴を見る',
+      '完全に削除する',
+    ]);
+    choose('この下に追加');
+    dialog = screen.getByRole('dialog', { name: 'サブスキルを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'サブスキル' }), { target: { value: '作り物のサブ2' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ layer: 'longSub', parent: 'nk1', extra: { after: log.at(-2).id } });
+    expect(subs()).toEqual(['作り物のサブ1', '作り物のサブ2']);
+    expect(screen.getByText('作り物のサブ1').closest('.means')).toBeTruthy();
+
+    openMenu('「作り物のサブ2」の操作');
+    choose('編集する');
+    dialog = screen.getByRole('dialog', { name: 'サブスキルを編集' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'サブスキル' }), { target: { value: '作り物のサブ2・改' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
+    expect(log.at(-1)).toMatchObject({ op: '修正', text: '作り物のサブ2・改' });
+
+    // 並べ替え：サブスキルは同じスキルの下で動かす（2段の ↑↓）
+    const before = log.length;
+    openMenu('「作り物のサブ1」の操作');
+    choose('並べ替える');
+    const sort = screen.getByRole('region', { name: '習得すべきスキルの並べ替え' });
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物のサブ2・改」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の習得スキルB」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log.slice(before)).toHaveLength(2);
+    expect(log.slice(before).every((d) => d.op === '並べ替え' && d.kind === '長期' && d.year === '')).toBe(true);
+    expect([...top().querySelectorAll('.vision > .item .tx')].map((x) => x.textContent)).toEqual(['作り物の習得スキルB', '作り物の習得スキルA']);
+    expect(subs()).toEqual(['作り物のサブ2・改', '作り物のサブ1']);
+
+    openMenu('「作り物の習得スキルA」の操作');
+    choose('削除する（灰色で残る）');
+    dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toContain('このスキルのサブスキルも灰色になります。');
+    fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }));
+    expect(screen.getByText('作り物のサブ1').closest('.item').className).toContain('del');
+    openMenu('「作り物のサブ1」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
