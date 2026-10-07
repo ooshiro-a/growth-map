@@ -33,9 +33,9 @@ function screenFor(tab, sub, year, rest, go) {
       if (sub === 'accel') return { title: `成長の地図 ${year}年`, el: <AccelScreen year={year} /> };
       return { title: `成長の地図 ${year}年`, el: <IcebergScreen year={year} /> };
     case 'review':
-      if (sub === 'roadmap') return { title: '逆算ロードマップ', el: <LongtermScreen part="roadmap" /> };
-      if (sub === 'plan') return { title: 'アクションプラン', el: <LongtermScreen part="plan" /> };
       return { title: '振り返り', el: <ReviewScreen /> };
+    case 'plan':
+      return { title: '長期プラン', el: <LongtermScreen /> };
     case 'life':
       return { title: '人生マップ', el: <LifeMapScreen /> };
     case 'timeline':
@@ -190,8 +190,8 @@ export default function App() {
     );
   }
 
-  const [tab, sub0, ...rest] = route.split('/');
-  // 振り返りの中（逆算ロードマップ・アクションプラン）は切り替えを出さずに、場所だけで分ける
+  // 前の場所：振り返りの中の逆算ロードマップは長期プランへ（アクションプランは外したので振り返りへ）
+  const [tab, sub0, ...rest] = (route.startsWith('review/roadmap') ? 'plan' : route).split('/');
   const sub = SUBTABS[tab] ? SUBTABS[tab].find((s) => s.key === sub0)?.key || SUBTABS[tab][0].key : sub0 || null;
   const { title, el } = screenFor(tab, sub, year, rest, go);
 

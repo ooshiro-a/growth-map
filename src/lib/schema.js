@@ -71,9 +71,11 @@ export const LAYER = {
   Q2: 'q2',
   Q3: 'q3',
   Q4: 'q4',
-  // 長期
+  // 長期プラン（仕事面・プライベート面の姿と、その下の必要なスキル）
   ROADMAP_WORK: 'roadmapWork',
   ROADMAP_PRIVATE: 'roadmapPrivate',
+  ROADMAP_SKILL: 'roadmapSkill',
+  // アクションプラン（2026年10月に画面から外した。記録はシートに残る）
   PLAN_GOAL: 'planGoal',
   PLAN_MEANS: 'planMeans',
   // 動作確認（テスト用シートだけ）

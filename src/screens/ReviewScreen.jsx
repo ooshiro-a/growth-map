@@ -268,7 +268,7 @@ function QuarterReview({ year, q, locked }) {
   );
 }
 
-// 振り返り：どの年の分かを選び、「年の振り返り」と「四半期」を切り替える。下に長期の入口
+// 振り返り：どの年の分かを選び、「年の振り返り」と「四半期」を切り替える
 // fixedYear を渡すと年を選ばせない（年表の「年ごとの記録」で使う。見るだけ）
 export function ReviewScreen({ fixedYear = null, viewOnly = false }) {
   const { model, readOnly, year: currentYear } = useApp();
@@ -348,22 +348,6 @@ export function ReviewScreen({ fixedYear = null, viewOnly = false }) {
       )}
 
       {mode === 'quarter' ? <QuarterReview key={`${year}/${q}`} year={year} q={q} locked={locked} /> : <YearReview year={year} locked={locked} />}
-
-      {!fixed && (
-        <section className="list">
-          <div className="sec">
-            <span>長期（年をまたぐ）</span>
-          </div>
-          <a className="item link-row" href="#/review/roadmap">
-            <span className="tx">逆算ロードマップ</span>
-            <span className="note">仕事面／プライベート面 ›</span>
-          </a>
-          <a className="item link-row" href="#/review/plan">
-            <span className="tx">アクションプラン</span>
-            <span className="note">目標／手段 ›</span>
-          </a>
-        </section>
-      )}
     </div>
   );
 }

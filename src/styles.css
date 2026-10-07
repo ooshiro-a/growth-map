@@ -1055,27 +1055,8 @@ ul.plain {
   border-style: dashed;
   font-size: 13px;
 }
-a.link-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  color: inherit;
-  text-decoration: none;
-}
-a.link-row .note {
-  margin: 0;
-  flex: none;
-}
 
-/* ---------------------------------------------------------------- 長期 */
-.back {
-  display: inline-block;
-  font-size: 13px;
-  color: var(--sub);
-  text-decoration: none;
-  margin: 0 0 8px;
-}
+/* ---------------------------------------------------------------- 長期プラン */
 .lead {
   display: inline-block;
   font-size: 11.5px;
@@ -1100,13 +1081,67 @@ a.link-row .note {
 .item.del .subline {
   color: var(--gone);
 }
-.plan-goal .tx {
-  font-weight: 700;
-}
 .means {
   border-left: 2px solid var(--line);
   margin: 0 0 4px 4px;
   padding-left: 10px;
+}
+/* ありたい姿の下の必要なスキル（姿との間に線を引かず、組の終わりに線） */
+.vision {
+  border-bottom: 1px dashed var(--line);
+}
+.vision:last-child {
+  border-bottom: none;
+}
+.vision > .item {
+  border-bottom: none;
+}
+.vision > .item .tx {
+  font-weight: 600;
+}
+.skills .note {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.item.skill .tx {
+  font-size: 13.5px;
+}
+/* 並べ替え：↑↓ */
+.sort-acts {
+  display: flex;
+  gap: 6px;
+}
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sort-group {
+  border-bottom: 1px dashed var(--line);
+}
+.sort-group:last-of-type {
+  border-bottom: none;
+}
+.sort-group > .item,
+.sort-group .means .item {
+  border-bottom: none;
+}
+.sort-btns {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.sort-btn {
+  width: 36px;
+  height: 32px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--ink);
+  font-size: 15px;
+}
+.sort-btn:disabled {
+  opacity: 0.3;
 }
 .fld {
   display: block;

@@ -1,33 +1,30 @@
 import { useState } from 'react';
 import { useApp } from '../app-context.js';
-import { HeaderActions } from '../components/HeaderActions.jsx';
 import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { newId } from '../lib/ids.js';
-import { attrText, dateLine } from '../lib/labels.js';
-import { ROADMAP_PARTS, actionPlan, roadmapItems } from '../lib/review.js';
+import { dateLine } from '../lib/labels.js';
+import { ROADMAP_PARTS, orderMoves, roadmapItems, roadmapSkills } from '../lib/review.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
 
 const K = KIND.LONGTERM;
+const SKILL = LAYER.ROADMAP_SKILL;
 const isPending = (e) => e.history.some((r) => r.pending);
 
 // 入れる欄（text は必須、ほかは空でもよい）
+const VISION = [
+  { key: 'when', label: '時期', placeholder: '例：2030年・40歳' },
+  { key: 'text', label: 'ありたい姿', multiline: true },
+];
 const FIELDS = {
-  [LAYER.ROADMAP_WORK]: [
-    { key: 'when', label: '時期', placeholder: '例：2030年・40歳' },
-    { key: 'text', label: 'ありたい姿', multiline: true },
-  ],
-  [LAYER.PLAN_GOAL]: [{ key: 'text', label: '目標' }],
-  [LAYER.PLAN_MEANS]: [
-    { key: 'text', label: '実行すること' },
-    { key: 'freq', label: '頻度', placeholder: '例：週2回' },
-    { key: 'tactic', label: '打ち手', multiline: true },
-  ],
+  [LAYER.ROADMAP_WORK]: VISION,
+  [LAYER.ROADMAP_PRIVATE]: VISION,
+  [SKILL]: [{ key: 'text', label: '必要なスキル' }],
 };
-FIELDS[LAYER.ROADMAP_PRIVATE] = FIELDS[LAYER.ROADMAP_WORK];
+const nameOf = (layer) => (layer === SKILL ? '必要なスキル' : 'ありたい姿');
 
 // 追加・編集の小窓（複数の欄）。onSave が false を返したら閉じない
 function FieldsDialog({ title, layer, entity = null, saveLabel, onSave, onClose }) {
@@ -93,7 +90,7 @@ function FieldsDialog({ title, layer, entity = null, saveLabel, onSave, onClose 
   );
 }
 
-// 書く・消すの共通（長期は年をまたぐので年は空欄）
+// 書く・消す・並べ替えの共通（長期プランは年をまたぐので年は空欄）
 function useLongtermWrite() {
   const { write } = useApp();
   const ok = (rows) => rows != null;
@@ -114,6 +111,8 @@ function useLongtermWrite() {
     },
     edit: (e, vals) => ok(write([{ year: '', kind: K, id: e.id, op: OP.EDIT, text: vals.text, extra: attrsOf(e.layer, vals, true) }])),
     remove: (e) => ok(write([{ year: '', kind: K, id: e.id, op: OP.DELETE }])),
+    // moves：[{id, after}]（同じ組の中だけ。親と層は変えない）
+    move: (moves) => moves.length === 0 || ok(write(moves.map(({ id, after }) => ({ year: '', kind: K, id, op: OP.MOVE, extra: { after } })))),
   };
 }
 
@@ -122,169 +121,214 @@ function Dialogs({ dialog, setDialog, lt }) {
   if (!dialog) return null;
   const close = () => setDialog(null);
   const { type, e, layer, after, parent } = dialog;
-  const name = { [LAYER.PLAN_GOAL]: '目標', [LAYER.PLAN_MEANS]: '手段' }[layer || e?.layer] || '項目';
-  if (type === 'add') return <FieldsDialog title={`${name}を追加`} layer={layer} saveLabel="追加する" onSave={(v) => lt.add(layer, v, { after, parent })} onClose={close} />;
-  if (type === 'edit') return <FieldsDialog title={`${name}を編集`} layer={e.layer} entity={e} saveLabel="保存する" onSave={(v) => lt.edit(e, v)} onClose={close} />;
+  const vision = e && e.layer !== SKILL;
+  if (type === 'add') return <FieldsDialog title={`${nameOf(layer)}を追加`} layer={layer} saveLabel="追加する" onSave={(v) => lt.add(layer, v, { after, parent })} onClose={close} />;
+  if (type === 'edit') return <FieldsDialog title={`${nameOf(e.layer)}を編集`} layer={e.layer} entity={e} saveLabel="保存する" onSave={(v) => lt.edit(e, v)} onClose={close} />;
   if (type === 'del')
     return (
       <ConfirmDialog
         title="削除する"
-        message={`「${e.text}」を削除します。消さずに灰色で残ります。${e.layer === LAYER.PLAN_GOAL ? 'この目標の手段も灰色になります。' : ''}`}
+        message={`「${e.text}」を削除します。消さずに灰色で残ります。${vision ? 'この姿の必要なスキルも灰色になります。' : ''}`}
         okLabel="削除する"
         warn
         onOk={() => lt.remove(e)}
         onClose={close}
       />
     );
-  if (type === 'purge') return <PurgeDialog e={e} note={e.layer === LAYER.PLAN_GOAL ? 'この目標の手段もいっしょに消えます。' : ''} onClose={close} />;
+  if (type === 'purge') return <PurgeDialog e={e} note={vision ? 'この姿の必要なスキルもいっしょに消えます。' : ''} onClose={close} />;
   if (type === 'hist') return <HistorySheet kind={K} id={e.id} title={e.text} onClose={close} />;
   return null;
 }
 
-const Back = () => (
-  <a className="back" href="#/review">
-    ‹ 振り返り
-  </a>
-);
+// 並べ替えの下書き：生きている姿と、その下の生きているスキルの番号
+function liveOrder(model, layer) {
+  const top = roadmapItems(model, layer).filter((e) => !e.deletedRec);
+  const kids = {};
+  for (const e of top) kids[e.id] = roadmapSkills(model, e).filter((s) => !s.deleted).map((s) => s.e.id);
+  return { top: top.map((e) => e.id), kids };
+}
+const canSort = (o) => o.top.length > 1 || Object.values(o.kids).some((k) => k.length > 1);
 
-// 逆算ロードマップ：仕事面／プライベート面。1項目＝時期＋ありたい姿
-function Roadmap({ locked }) {
+// 配列の i 番目を d（-1 上・+1 下）へ1つ動かす
+const shift = (list, i, d) => {
+  const out = list.slice();
+  [out[i], out[i + d]] = [out[i + d], out[i]];
+  return out;
+};
+
+// 並べ替えの1行：文言と ↑↓
+function SortRow({ e, i, n, onMove, className = '' }) {
+  if (!e) return null; // 並べ替え中に別の端末で完全に削除された時
+  return (
+    <div className={`item sort-row ${className}`}>
+      <span className="tx">
+        {e.attrs.when && <span className="lead">{e.attrs.when}</span>}
+        {e.text}
+      </span>
+      <span className="sort-btns">
+        <button type="button" className="sort-btn" aria-label={`「${e.text}」を上へ`} disabled={i === 0} onClick={() => onMove(i, -1)}>
+          ↑
+        </button>
+        <button type="button" className="sort-btn" aria-label={`「${e.text}」を下へ`} disabled={i === n - 1} onClick={() => onMove(i, 1)}>
+          ↓
+        </button>
+      </span>
+    </div>
+  );
+}
+
+// 1つの面の並べ替え。↑↓ は下書きだけ動かし、「保存する」で動いた項目の分だけ記録を足す
+function SortPart({ label, layer, onDone }) {
   const { model } = useApp();
   const lt = useLongtermWrite();
-  const [dialog, setDialog] = useState(null);
-  const menuFor = (e) =>
-    locked
-      ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) }]
-      : e.deletedRec
-      ? [
-          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
-          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
-        ]
-      : [
-          { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
-          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: e.layer, after: e.id }) },
-          { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
-          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
-          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
-        ];
+  const [start] = useState(() => liveOrder(model, layer));
+  const [draft, setDraft] = useState(start);
+  const v = model.flat(K);
+  const get = (id) => v.entities.get(id);
+  const moves = [
+    ...orderMoves(start.top, draft.top),
+    ...start.top.flatMap((id) => orderMoves(start.kids[id], draft.kids[id])),
+  ];
+  const save = () => {
+    if (lt.move(moves)) onDone();
+  };
+  const hasGray = roadmapItems(model, layer).some((e) => e.deletedRec || roadmapSkills(model, e).some((s) => s.deleted));
   return (
-    <>
-      {ROADMAP_PARTS.map(({ layer, label }) => {
-        const items = roadmapItems(model, layer);
+    <section className="list sorting" aria-label={`${label}の並べ替え`}>
+      <div className="sec">
+        <span>{label}を並べ替え</span>
+        <span className="sort-acts">
+          <button type="button" className="btn small" onClick={onDone}>
+            やめる
+          </button>
+          <button type="button" className="btn small primary" disabled={moves.length === 0} onClick={save}>
+            保存する
+          </button>
+        </span>
+      </div>
+      {draft.top.map((id, i) => {
+        const kids = draft.kids[id];
         return (
-          <section className="list" key={layer}>
-            <div className="sec">
-              <span>{label}</span>
-              {!locked && <MoreMenu small label={`${label}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', layer }) }]} />}
-            </div>
-            {items.length === 0 && <p className="note">まだありません</p>}
-            {items.map((e) => (
-              <ItemRow
-                key={e.id}
-                text={e.text}
-                lead={e.attrs.when || null}
-                date={dateLine(e)}
-                deleted={!!e.deletedRec}
-                pending={isPending(e)}
-                menu={menuFor(e)}
-              />
-            ))}
-          </section>
+          <div key={id} className="sort-group">
+            <SortRow e={get(id)} i={i} n={draft.top.length} onMove={(at, d) => setDraft({ ...draft, top: shift(draft.top, at, d) })} />
+            {kids.length > 0 && (
+              <div className="means">
+                {kids.map((sid, j) => (
+                  <SortRow
+                    key={sid}
+                    className="skill"
+                    e={get(sid)}
+                    i={j}
+                    n={kids.length}
+                    onMove={(at, d) => setDraft({ ...draft, kids: { ...draft.kids, [id]: shift(kids, at, d) } })}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         );
       })}
-      <p className="note">時期の遠い順（ありたい姿から逆算）に並べると見やすくなります。「この下に追加」で間に入れられます</p>
-      <Dialogs dialog={dialog} setDialog={setDialog} lt={lt} />
-    </>
+      {hasGray && <p className="note">灰色（削除した項目）は元の場所のまま動きません</p>}
+    </section>
   );
 }
 
-// アクションプラン：目標ごとに手段（実行すること・頻度・打ち手）
-function Plan({ locked }) {
+// 1つの面：時期＋ありたい姿、その下に必要なスキル
+function Part({ label, layer, locked, onSort, setDialog }) {
   const { model } = useApp();
+  const items = roadmapItems(model, layer);
+  const sortable = !locked && canSort(liveOrder(model, layer));
+  const hist = (e) => ({ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) });
+  const purge = (e) => ({ label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) });
+  const sortItem = sortable ? [{ label: '並べ替える', onSelect: onSort }] : [];
+  const visionMenu = (e) =>
+    locked
+      ? [hist(e)]
+      : e.deletedRec
+      ? [hist(e), purge(e)]
+      : [
+          { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
+          { label: '必要なスキルを追加', onSelect: () => setDialog({ type: 'add', layer: SKILL, parent: e.id }) },
+          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: e.layer, after: e.id }) },
+          ...sortItem,
+          { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
+          hist(e),
+          purge(e),
+        ];
+  const skillMenu = (s, deleted) =>
+    locked
+      ? [hist(s)]
+      : deleted
+      ? [hist(s), purge(s)]
+      : [
+          { label: '編集する', onSelect: () => setDialog({ type: 'edit', e: s }) },
+          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: SKILL, parent: s.parent, after: s.id }) },
+          ...sortItem,
+          { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e: s }) },
+          hist(s),
+          purge(s),
+        ];
+  return (
+    <section className="list">
+      <div className="sec">
+        <span>{label}</span>
+        {!locked && (
+          <MoreMenu small label={`${label}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', layer }) }, ...sortItem]} />
+        )}
+      </div>
+      {items.length === 0 && <p className="note">まだありません</p>}
+      {items.map((e) => {
+        const skills = roadmapSkills(model, e);
+        return (
+          <div key={e.id} className={`vision${e.deletedRec ? ' del' : ''}`}>
+            <ItemRow
+              text={e.text}
+              lead={e.attrs.when || null}
+              date={dateLine(e)}
+              deleted={!!e.deletedRec}
+              pending={isPending(e)}
+              menu={visionMenu(e)}
+            />
+            {(skills.length > 0 || !(locked || e.deletedRec)) && (
+              <div className="means skills">
+                {skills.length === 0 && <p className="note">（「…」→「必要なスキルを追加」）</p>}
+                {skills.map(({ e: s, deleted }) => (
+                  <ItemRow
+                    key={s.id}
+                    className="skill"
+                    text={s.text}
+                    date={dateLine(s, { deleted })}
+                    deleted={!!deleted}
+                    pending={isPending(s)}
+                    menu={skillMenu(s, deleted)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+// 長期プラン（年をまたぐ）：仕事面／プライベート面 ＞ 時期＋ありたい姿 ＞ 必要なスキル
+export function LongtermScreen() {
+  const { readOnly } = useApp();
   const lt = useLongtermWrite();
   const [dialog, setDialog] = useState(null);
-  const plan = actionPlan(model);
-
-  const goalMenu = (g) =>
-    locked
-      ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: g }) }]
-      : g.deletedRec
-      ? [
-          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: g }) },
-          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: g }) },
-        ]
-      : [
-          { label: '編集する', onSelect: () => setDialog({ type: 'edit', e: g }) },
-          { label: '手段を追加', onSelect: () => setDialog({ type: 'add', layer: LAYER.PLAN_MEANS, parent: g.id }) },
-          { label: 'この下に目標を追加', onSelect: () => setDialog({ type: 'add', layer: LAYER.PLAN_GOAL, after: g.id }) },
-          { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e: g }) },
-          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: g }) },
-          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: g }) },
-        ];
-  const meansMenu = (m, deleted) =>
-    locked
-      ? [{ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: m }) }]
-      : deleted
-      ? [
-          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: m }) },
-          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: m }) },
-        ]
-      : [
-          { label: '編集する', onSelect: () => setDialog({ type: 'edit', e: m }) },
-          { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: LAYER.PLAN_MEANS, parent: m.parent, after: m.id }) },
-          { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e: m }) },
-          { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e: m }) },
-          { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e: m }) },
-        ];
-
-  return (
-    <>
-      {!locked && (
-        <HeaderActions>
-          <button type="button" className="bar-link add" onClick={() => setDialog({ type: 'add', layer: LAYER.PLAN_GOAL })}>
-            ＋目標
-          </button>
-        </HeaderActions>
-      )}
-      {plan.length === 0 && <p className="note">まだありません。{locked ? '' : '右上の「＋目標」から足します'}</p>}
-      {plan.map(({ goal, means }) => (
-        <section className={`list plan${goal.deletedRec ? ' del' : ''}`} key={goal.id}>
-          <ItemRow
-            className="plan-goal"
-            text={goal.text}
-            date={dateLine(goal)}
-            deleted={!!goal.deletedRec}
-            pending={isPending(goal)}
-            menu={goalMenu(goal)}
-          />
-          <div className="means">
-            {means.length === 0 && <p className="note">手段はまだありません{locked || goal.deletedRec ? '' : '（「…」→「手段を追加」）'}</p>}
-            {means.map(({ e, deleted }) => (
-              <ItemRow
-                key={e.id}
-                text={e.text}
-                sub={attrText(e.attrs, ['freq', 'tactic']) || null}
-                date={dateLine(e, { deleted })}
-                deleted={!!deleted}
-                pending={isPending(e)}
-                menu={meansMenu(e, deleted)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
-      <Dialogs dialog={dialog} setDialog={setDialog} lt={lt} />
-    </>
-  );
-}
-
-// 長期（年をまたぐ）：part = 'roadmap' | 'plan'
-export function LongtermScreen({ part }) {
-  const { readOnly } = useApp();
+  const [sorting, setSorting] = useState(null); // 並べ替え中の面の層
   return (
     <div className="longterm-screen">
-      <Back />
-      {part === 'plan' ? <Plan locked={readOnly} /> : <Roadmap locked={readOnly} />}
+      {ROADMAP_PARTS.map(({ layer, label }) =>
+        sorting === layer && !readOnly ? (
+          <SortPart key={layer} label={label} layer={layer} onDone={() => setSorting(null)} />
+        ) : (
+          <Part key={layer} label={label} layer={layer} locked={readOnly} onSort={() => setSorting(layer)} setDialog={setDialog} />
+        ),
+      )}
+      <p className="note">ありたい姿は時期の遠い順（ありたい姿から逆算）に並べると見やすくなります。「…」→「並べ替える」で順番を変えられます</p>
+      <Dialogs dialog={dialog} setDialog={setDialog} lt={lt} />
     </div>
   );
 }

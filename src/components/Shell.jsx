@@ -10,6 +10,7 @@ export const TABS = [
   { key: 'home', label: 'ホーム', path: 'home' },
   { key: 'map', label: '成長の地図', path: 'map/iceberg' },
   { key: 'review', label: '振り返り', path: 'review' },
+  { key: 'plan', label: '長期プラン', path: 'plan' },
   { key: 'life', label: '人生マップ', path: 'life' },
   { key: 'timeline', label: '年表', path: 'timeline/growth' },
 ];

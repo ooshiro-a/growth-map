@@ -8,7 +8,6 @@ import { buildModel } from '../src/lib/fold.js';
 import { icebergYear } from '../src/lib/iceberg.js';
 import { historyText, writtenLine } from '../src/lib/labels.js';
 import {
-  actionPlan,
   canWriteReview,
   currentQuarter,
   defaultQuarter,
@@ -18,9 +17,11 @@ import {
   goalsOf,
   missedToCarry,
   nextQuarter,
+  orderMoves,
   reviewEntry,
   reviewYears,
   roadmapItems,
+  roadmapSkills,
 } from '../src/lib/review.js';
 import { KIND, LAYER, OP, quarterLayer, quarterOfLayer, reviewId, toRow } from '../src/lib/schema.js';
 import { growthYears } from '../src/lib/timeline.js';
@@ -230,7 +231,7 @@ describe('四半期：目標と振り返り', () => {
   });
 });
 
-describe('長期：逆算ロードマップ・アクションプラン', () => {
+describe('長期プラン：ありたい姿・必要なスキル・並べ替え', () => {
   it('ロードマップは面ごとに並び、時期は付記に入る。編集で時期を空にできる', () => {
     const rows = [
       r({ kind: L, id: 'nr1', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '作り物の姿1', extra: { when: '2035年' } }),
@@ -247,23 +248,47 @@ describe('長期：逆算ロードマップ・アクションプラン', () => {
     expect(historyText(m.historyOf(L, 'nr3')[0], L)).toBe('追加「作り物の姿3」（時期：2030年）');
   });
 
-  it('アクションプラン：目標の下に手段。目標を削除すると手段も灰色（削除日は目標の日）', () => {
+  it('必要なスキルは姿の下に並ぶ。姿を削除するとスキルも灰色（削除日は姿の日）', () => {
     const rows = [
-      r({ kind: L, id: 'np1', op: OP.ADD, layer: LAYER.PLAN_GOAL, text: '作り物の目標1' }),
-      r({ kind: L, id: 'np2', op: OP.ADD, layer: LAYER.PLAN_GOAL, text: '作り物の目標2' }),
-      r({ kind: L, id: 'nm1', op: OP.ADD, layer: LAYER.PLAN_MEANS, parent: 'np1', text: '作り物の手段1', extra: { freq: '週2回', tactic: '作り物の打ち手' } }),
-      r({ kind: L, id: 'nm2', op: OP.ADD, layer: LAYER.PLAN_MEANS, parent: 'np1', text: '作り物の手段0', extra: { after: '' } }),
-      r({ kind: L, id: 'nm3', op: OP.ADD, layer: LAYER.PLAN_MEANS, parent: 'np2', text: '作り物の手段3' }),
-      r({ kind: L, id: 'np1', op: OP.DELETE }),
+      r({ kind: L, id: 'nr1', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '作り物の姿1' }),
+      r({ kind: L, id: 'nr2', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '作り物の姿2' }),
+      r({ kind: L, id: 'ns1', op: OP.ADD, layer: LAYER.ROADMAP_SKILL, parent: 'nr1', text: '作り物のスキル1' }),
+      r({ kind: L, id: 'ns2', op: OP.ADD, layer: LAYER.ROADMAP_SKILL, parent: 'nr1', text: '作り物のスキル0', extra: { after: '' } }),
+      r({ kind: L, id: 'ns3', op: OP.ADD, layer: LAYER.ROADMAP_SKILL, parent: 'nr2', text: '作り物のスキル3' }),
+      r({ kind: L, id: 'nr1', op: OP.DELETE }),
     ];
     const m = buildModel(rows, [], { currentYear: 2026 });
-    const plan = actionPlan(m);
-    expect(plan.map((p) => p.goal.id)).toEqual(['np1', 'np2']);
-    expect(plan[0].goal.deletedRec).toBeTruthy();
-    expect(plan[0].means.map((x) => x.e.id)).toEqual(['nm2', 'nm1']);
-    expect(plan[0].means.every((x) => x.deleted && x.deleted.inherited)).toBe(true);
-    expect(plan[0].means[1].e.attrs).toEqual({ freq: '週2回', tactic: '作り物の打ち手' });
-    expect(plan[1].means.map((x) => [x.e.id, x.deleted])).toEqual([['nm3', null]]);
+    const work = roadmapItems(m, LAYER.ROADMAP_WORK);
+    // スキルは面の並びに混ざらない
+    expect(ids(work)).toEqual(['nr1', 'nr2']);
+    const s1 = roadmapSkills(m, work[0]);
+    expect(s1.map((x) => x.e.id)).toEqual(['ns2', 'ns1']);
+    expect(s1.every((x) => x.deleted && x.deleted.inherited)).toBe(true);
+    expect(roadmapSkills(m, work[1]).map((x) => [x.e.id, x.deleted])).toEqual([['ns3', null]]);
+  });
+
+  it('並べ替えの記録：動いた項目の分だけ。並べ替えた通りに組み上がる', () => {
+    expect(orderMoves(['a', 'b', 'c'], ['a', 'b', 'c'])).toEqual([]);
+    expect(orderMoves(['a', 'b', 'c'], ['b', 'a', 'c'])).toHaveLength(1);
+    expect(orderMoves(['a', 'b', 'c'], ['b', 'c', 'a'])).toEqual([{ id: 'a', after: 'c' }]);
+    expect(orderMoves(['a', 'b', 'c'], ['c', 'a', 'b'])).toEqual([{ id: 'c', after: '' }]);
+    expect(orderMoves(['a', 'b', 'c', 'd'], ['d', 'c', 'b', 'a'])).toHaveLength(3);
+    // どの並びでも、組み上げた結果が下書きと同じになる（灰色の項目は元の場所のまま）
+    const perms = (xs) => (xs.length <= 1 ? [xs] : xs.flatMap((x, i) => perms([...xs.slice(0, i), ...xs.slice(i + 1)]).map((p) => [x, ...p])));
+    const live = ['n1', 'n2', 'n3', 'n4'];
+    for (const want of perms(live)) {
+      const rows = [
+        r({ kind: L, id: 'n1', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '1' }),
+        r({ kind: L, id: 'nx', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: 'x' }),
+        r({ kind: L, id: 'n2', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '2' }),
+        r({ kind: L, id: 'n3', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '3' }),
+        r({ kind: L, id: 'n4', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '4' }),
+        r({ kind: L, id: 'nx', op: OP.DELETE }),
+        ...orderMoves(live, want).map(({ id, after }) => r({ kind: L, id, op: OP.MOVE, extra: { after } })),
+      ];
+      const got = ids(roadmapItems(buildModel(rows, [], { currentYear: 2026 }), LAYER.ROADMAP_WORK)).filter((id) => id !== 'nx');
+      expect(got).toEqual(want);
+    }
   });
 });
 
@@ -510,17 +535,17 @@ describe('四半期の振り返りの画面', () => {
   });
 });
 
-describe('長期の画面', () => {
-  it('ロードマップ：時期＋ありたい姿を足し、時期が前に出る', () => {
+describe('長期プランの画面', () => {
+  it('時期＋ありたい姿を足し、時期が前に出る', () => {
     const log = [];
     render(
       <Harness log={log}>
-        <LongtermScreen part="roadmap" />
+        <LongtermScreen />
       </Harness>,
     );
     openMenu('仕事面の操作');
     choose('追加する');
-    const dialog = screen.getByRole('dialog', { name: '項目を追加' });
+    const dialog = screen.getByRole('dialog', { name: 'ありたい姿を追加' });
     fireEvent.change(within(dialog).getByRole('textbox', { name: /時期/ }), { target: { value: '2030年' } });
     const save = within(dialog).getByRole('button', { name: '追加する' });
     expect(save.disabled).toBe(true); // ありたい姿が空
@@ -530,44 +555,103 @@ describe('長期の画面', () => {
     expect(screen.getByText('2030年', { selector: '.lead' })).toBeTruthy();
   });
 
-  it('アクションプラン：目標→手段（実行すること・頻度・打ち手）。編集で頻度を空にする', async () => {
+  it('必要なスキルを姿の下に足す。姿を削除するとスキルも灰色', () => {
     const log = [];
+    const initial = [r({ kind: L, id: 'nr1', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '作り物の姿', extra: { when: '2035年' } })];
     render(
-      <Harness log={log}>
-        <LongtermScreen part="plan" />
+      <Harness log={log} initial={initial}>
+        <LongtermScreen />
       </Harness>,
     );
-    fireEvent.click(await screen.findByRole('button', { name: '＋目標' }));
-    let dialog = screen.getByRole('dialog', { name: '目標を追加' });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: '目標' }), { target: { value: '作り物のプラン目標' } });
+    expect(screen.getByText('（「…」→「必要なスキルを追加」）')).toBeTruthy();
+    openMenu('「作り物の姿」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
+      '編集する',
+      '必要なスキルを追加',
+      'この下に追加',
+      '削除する（灰色で残る）',
+      '履歴を見る',
+      '完全に削除する',
+    ]);
+    choose('必要なスキルを追加');
+    let dialog = screen.getByRole('dialog', { name: '必要なスキルを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '必要なスキル' }), { target: { value: '作り物のスキル' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
-    const goalId = log.at(-1).id;
-    expect(log.at(-1)).toMatchObject({ layer: 'planGoal', text: '作り物のプラン目標' });
+    expect(log.at(-1)).toMatchObject({ kind: '長期', op: '追加', layer: 'roadmapSkill', parent: 'nr1', year: '', text: '作り物のスキル' });
+    expect(screen.getByText('作り物のスキル').closest('.means')).toBeTruthy();
+    expect(screen.queryByText('（「…」→「必要なスキルを追加」）')).toBeNull();
 
-    openMenu('「作り物のプラン目標」の操作');
-    choose('手段を追加');
-    dialog = screen.getByRole('dialog', { name: '手段を追加' });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: '実行すること' }), { target: { value: '作り物の手段' } });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: /頻度/ }), { target: { value: '週2回' } });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: /打ち手/ }), { target: { value: '作り物の打ち手' } });
-    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
-    expect(log.at(-1)).toMatchObject({ layer: 'planMeans', parent: goalId, text: '作り物の手段', extra: { freq: '週2回', tactic: '作り物の打ち手' } });
-    expect(screen.getByText('頻度：週2回／打ち手：作り物の打ち手')).toBeTruthy();
-
-    openMenu('「作り物の手段」の操作');
+    openMenu('「作り物のスキル」の操作');
     choose('編集する');
-    dialog = screen.getByRole('dialog', { name: '手段を編集' });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: /頻度/ }), { target: { value: '' } });
+    dialog = screen.getByRole('dialog', { name: '必要なスキルを編集' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '必要なスキル' }), { target: { value: '作り物のスキル・改' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
-    expect(log.at(-1)).toMatchObject({ op: '修正', text: '作り物の手段', extra: { freq: '', tactic: '作り物の打ち手' } });
-    expect(screen.getByText('打ち手：作り物の打ち手')).toBeTruthy();
+    expect(log.at(-1)).toMatchObject({ op: '修正', text: '作り物のスキル・改' });
 
-    // 目標を削除すると、手段も灰色で残る
-    openMenu('「作り物のプラン目標」の操作');
+    openMenu('「作り物の姿」の操作');
     choose('削除する（灰色で残る）');
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '削除する' }));
-    expect(screen.getByText('作り物の手段').closest('.item').className).toContain('del');
-    openMenu('「作り物の手段」の操作');
+    dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toContain('この姿の必要なスキルも灰色になります。');
+    fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }));
+    expect(screen.getByText('作り物のスキル・改').closest('.item').className).toContain('del');
+    openMenu('「作り物のスキル・改」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
+  });
+
+  it('「…」→「並べ替える」：↑↓ で動かし、保存で動いた分だけ記録を足す。やめると何も書かない', () => {
+    const log = [];
+    const W = LAYER.ROADMAP_WORK;
+    const initial = [
+      r({ kind: L, id: 'nr1', op: OP.ADD, layer: W, text: '作り物の姿A', extra: { when: '2028年' } }),
+      r({ kind: L, id: 'nr2', op: OP.ADD, layer: W, text: '作り物の姿B', extra: { when: '2035年' } }),
+      r({ kind: L, id: 'nr3', op: OP.ADD, layer: W, text: '作り物の姿C', extra: { when: '2038年' } }),
+      r({ kind: L, id: 'nrx', op: OP.ADD, layer: W, text: '作り物の消した姿' }),
+      r({ kind: L, id: 'nrx', op: OP.DELETE }),
+      r({ kind: L, id: 'ns1', op: OP.ADD, layer: LAYER.ROADMAP_SKILL, parent: 'nr2', text: '作り物のスキル1' }),
+      r({ kind: L, id: 'ns2', op: OP.ADD, layer: LAYER.ROADMAP_SKILL, parent: 'nr2', text: '作り物のスキル2' }),
+      r({ kind: L, id: 'np1', op: OP.ADD, layer: LAYER.ROADMAP_PRIVATE, text: '作り物の私の姿' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <LongtermScreen />
+      </Harness>,
+    );
+    const work = () => [...document.querySelectorAll('.longterm-screen > .list')][0];
+    const texts = () => [...work().querySelectorAll('.vision > .item .tx')].map((x) => x.textContent);
+    // 1つしかない面には出さない
+    openMenu('プライベート面の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['追加する']);
+    openMenu('プライベート面の操作');
+
+    // やめる：何も書かない
+    openMenu('「作り物の姿B」の操作');
+    choose('並べ替える');
+    const sort = screen.getByRole('region', { name: '仕事面の並べ替え' });
+    expect(within(sort).queryByText('作り物の消した姿')).toBeNull();
+    expect(within(sort).getByText('灰色（削除した項目）は元の場所のまま動きません')).toBeTruthy();
+    expect(within(sort).getByRole('button', { name: '保存する' }).disabled).toBe(true);
+    expect(within(sort).getByRole('button', { name: '「作り物の姿A」を上へ' }).disabled).toBe(true);
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の姿C」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: 'やめる' }));
+    expect(log).toHaveLength(0);
+    expect(texts()).toEqual(['2028年作り物の姿A', '2035年作り物の姿B', '2038年作り物の姿C', '作り物の消した姿']);
+
+    // 遠い順に並べ替え、スキルも入れ替える
+    openMenu('仕事面の操作');
+    choose('並べ替える');
+    const s2 = screen.getByRole('region', { name: '仕事面の並べ替え' });
+    fireEvent.click(within(s2).getByRole('button', { name: '「作り物の姿C」を上へ' }));
+    fireEvent.click(within(s2).getByRole('button', { name: '「作り物の姿C」を上へ' }));
+    fireEvent.click(within(s2).getByRole('button', { name: '「作り物の姿B」を上へ' }));
+    fireEvent.click(within(s2).getByRole('button', { name: '「作り物のスキル2」を上へ' }));
+    fireEvent.click(within(s2).getByRole('button', { name: '保存する' }));
+    // 姿は2つ、スキルは1つ動かせば足りる（年は空欄、親・層は書かない）
+    expect(log).toHaveLength(3);
+    expect(log.every((d) => d.op === '並べ替え' && d.kind === '長期' && d.year === '' && d.parent === undefined && d.layer === undefined)).toBe(true);
+    expect(log.filter((d) => d.id.startsWith('ns'))).toHaveLength(1);
+    expect(screen.queryByRole('region', { name: '仕事面の並べ替え' })).toBeNull();
+    expect(texts()).toEqual(['2038年作り物の姿C', '2035年作り物の姿B', '2028年作り物の姿A', '作り物の消した姿']);
+    const skills = [...work().querySelectorAll('.skill .tx')].map((x) => x.textContent);
+    expect(skills).toEqual(['作り物のスキル2', '作り物のスキル1']);
   });
 });

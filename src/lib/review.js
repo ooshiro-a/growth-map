@@ -104,25 +104,50 @@ export function reviewSteps(model) {
   return out.sort((a, b) => a.year - b.year || (a.q || 5) - (b.q || 5));
 }
 
-// ---------------------------------------------------------------- 長期（年をまたぐ）
+// ---------------------------------------------------------------- 長期プラン（年をまたぐ）
 export const ROADMAP_PARTS = [
   { layer: LAYER.ROADMAP_WORK, label: '仕事面' },
   { layer: LAYER.ROADMAP_PRIVATE, label: 'プライベート面' },
 ];
 
-// 逆算ロードマップの1つの面
+// 1つの面：時期＋ありたい姿
 export function roadmapItems(model, layer) {
   return model.list(model.flat(KIND.LONGTERM), `L:${layer}`);
 }
 
-// アクションプラン：目標ごとに手段を並べる。手段の削除は親の目標の削除も含める
-export function actionPlan(model) {
+// ありたい姿の下の必要なスキル。スキルの削除は親の姿の削除も含める
+export function roadmapSkills(model, item) {
   const v = model.flat(KIND.LONGTERM);
-  return model.list(v, `L:${LAYER.PLAN_GOAL}`).map((goal) => ({
-    goal,
-    means: model
-      .list(v, `P:${goal.id}`)
-      .filter((m) => m.layer === LAYER.PLAN_MEANS)
-      .map((m) => ({ e: m, deleted: model.deletedInfo(v, m) })),
-  }));
+  return model
+    .list(v, `P:${item.id}`)
+    .filter((s) => s.layer === LAYER.ROADMAP_SKILL)
+    .map((s) => ({ e: s, deleted: model.deletedInfo(v, s) }));
+}
+
+// 並べ替え：今の並び current（番号）を desired にする「並べ替え」の記録 [{id, after}]
+// 動かさずに済む最も長い組（今の並びで増えていく列）は残し、ほかだけを直前の項目の後ろへ移す
+// 上から順に足すので、移す先（直前の項目）はいつも並べ終わっている
+export function orderMoves(current, desired) {
+  const pos = new Map(current.map((id, i) => [id, i]));
+  const seq = desired.map((id) => pos.get(id));
+  // 最も長い増えていく列（番号の並びは小さいので素直に O(n²)）
+  const len = seq.map(() => 1);
+  const prev = seq.map(() => -1);
+  let best = -1;
+  for (let i = 0; i < seq.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (seq[j] < seq[i] && len[j] + 1 > len[i]) {
+        len[i] = len[j] + 1;
+        prev[i] = j;
+      }
+    }
+    if (best < 0 || len[i] > len[best]) best = i;
+  }
+  const stay = new Set();
+  for (let i = best; i >= 0; i = prev[i]) stay.add(i);
+  const out = [];
+  desired.forEach((id, i) => {
+    if (!stay.has(i)) out.push({ id, after: i === 0 ? '' : desired[i - 1] });
+  });
+  return out;
 }

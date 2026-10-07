@@ -261,3 +261,8 @@ html, body { line-height: 1.6; }
   .home-cols .capped:not(.open) .item:has(+ .item.over) { border-bottom: none; }
   .cap-more { display: inline-block; margin-left: auto; border: none; background: none; padding: 2px 4px; font-size: 12px; font-weight: 700; color: var(--ai-tx); }
 }
+
+/* 下の切り替えは6つ（長期プランを足した）。狭いスマホでも収まるように */
+@media (max-width: 359px) {
+  .nav button { font-size: 10px; letter-spacing: -0.02em; }
+}
