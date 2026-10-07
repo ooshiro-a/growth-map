@@ -1086,7 +1086,7 @@ ul.plain {
   margin: 0 0 4px 4px;
   padding-left: 10px;
 }
-/* ありたい姿の下の必要なスキル（姿との間に線を引かず、組の終わりに線） */
+/* ありたい姿の下の必要なスキルや考え方など（姿との間に線を引かず、組の終わりに線） */
 .vision {
   border-bottom: 1px dashed var(--line);
 }

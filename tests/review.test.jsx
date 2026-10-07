@@ -586,7 +586,7 @@ describe('長期プランの画面', () => {
     expect(screen.getByText('2030年', { selector: '.lead' })).toBeTruthy();
   });
 
-  it('必要なスキルを姿の下に足す。姿を削除するとスキルも灰色', () => {
+  it('必要なスキルや考え方などを姿の下に足す。姿を削除するとスキルも灰色', () => {
     const log = [];
     const initial = [r({ kind: L, id: 'nr1', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '作り物の姿', extra: { when: '2035年' } })];
     render(
@@ -594,38 +594,104 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    expect(screen.getByText('（「…」→「必要なスキルを追加」）')).toBeTruthy();
+    expect(screen.getByText('（「…」→「必要なスキルや考え方などを追加」）')).toBeTruthy();
     openMenu('「作り物の姿」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
       '編集する',
-      '必要なスキルを追加',
+      '必要なスキルや考え方などを追加',
       'この下に追加',
       '削除する（灰色で残る）',
       '履歴を見る',
       '完全に削除する',
     ]);
-    choose('必要なスキルを追加');
-    let dialog = screen.getByRole('dialog', { name: '必要なスキルを追加' });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: '必要なスキル' }), { target: { value: '作り物のスキル' } });
+    choose('必要なスキルや考え方などを追加');
+    let dialog = screen.getByRole('dialog', { name: '必要なスキルや考え方などを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '必要なスキルや考え方など' }), { target: { value: '作り物のスキル' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
     expect(log.at(-1)).toMatchObject({ kind: '長期', op: '追加', layer: 'roadmapSkill', parent: 'nr1', year: '', text: '作り物のスキル' });
     expect(screen.getByText('作り物のスキル').closest('.means')).toBeTruthy();
-    expect(screen.queryByText('（「…」→「必要なスキルを追加」）')).toBeNull();
+    expect(screen.queryByText('（「…」→「必要なスキルや考え方などを追加」）')).toBeNull();
 
     openMenu('「作り物のスキル」の操作');
     choose('編集する');
-    dialog = screen.getByRole('dialog', { name: '必要なスキルを編集' });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: '必要なスキル' }), { target: { value: '作り物のスキル・改' } });
+    dialog = screen.getByRole('dialog', { name: '必要なスキルや考え方などを編集' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '必要なスキルや考え方など' }), { target: { value: '作り物のスキル・改' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
     expect(log.at(-1)).toMatchObject({ op: '修正', text: '作り物のスキル・改' });
 
     openMenu('「作り物の姿」の操作');
     choose('削除する（灰色で残る）');
     dialog = screen.getByRole('dialog');
-    expect(dialog.textContent).toContain('この姿の必要なスキルも灰色になります。');
+    expect(dialog.textContent).toContain('この姿の必要なスキルや考え方なども灰色になります。');
     fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }));
     expect(screen.getByText('作り物のスキル・改').closest('.item').className).toContain('del');
     openMenu('「作り物のスキル・改」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
+  });
+
+  it('習得すべきスキル：面の上の1段の一覧。追加・この下に追加・編集・並べ替え・削除（灰色）', () => {
+    const log = [];
+    const S = LAYER.LONG_SKILL;
+    const initial = [
+      r({ kind: L, id: 'nk1', op: OP.ADD, layer: S, text: '作り物の習得スキルA' }),
+      r({ kind: L, id: 'nr1', op: OP.ADD, layer: LAYER.ROADMAP_WORK, text: '作り物の姿' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <LongtermScreen />
+      </Harness>,
+    );
+    const lists = () => [...document.querySelectorAll('.longterm-screen > .list')];
+    expect(lists().map((x) => x.querySelector('.sec span').textContent)).toEqual(['習得すべきスキル', '仕事面', 'プライベート面']);
+    const texts = () => [...lists()[0].querySelectorAll('.item .tx')].map((x) => x.textContent);
+    // 1つだけの時は並べ替えを出さない
+    openMenu('「作り物の習得スキルA」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
+      '編集する',
+      'この下に追加',
+      '削除する（灰色で残る）',
+      '履歴を見る',
+      '完全に削除する',
+    ]);
+    choose('この下に追加');
+    let dialog = screen.getByRole('dialog', { name: '習得すべきスキルを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '習得すべきスキル' }), { target: { value: '作り物の習得スキルB' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '長期', op: '追加', layer: 'longSkill', parent: '', year: '', text: '作り物の習得スキルB', extra: { after: 'nk1' } });
+
+    openMenu('習得すべきスキルの操作');
+    choose('追加する');
+    dialog = screen.getByRole('dialog', { name: '習得すべきスキルを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '習得すべきスキル' }), { target: { value: '作り物の習得スキルC' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(texts()).toEqual(['作り物の習得スキルA', '作り物の習得スキルB', '作り物の習得スキルC']);
+    // 仕事面には混ざらない
+    expect(lists()[1].textContent).not.toContain('作り物の習得スキル');
+
+    openMenu('「作り物の習得スキルB」の操作');
+    choose('編集する');
+    dialog = screen.getByRole('dialog', { name: '習得すべきスキルを編集' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '習得すべきスキル' }), { target: { value: '作り物の習得スキルB・改' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
+    expect(log.at(-1)).toMatchObject({ op: '修正', text: '作り物の習得スキルB・改' });
+
+    const before = log.length;
+    openMenu('習得すべきスキルの操作');
+    choose('並べ替える');
+    const sort = screen.getByRole('region', { name: '習得すべきスキルの並べ替え' });
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の習得スキルC」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の習得スキルC」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log.slice(before)).toEqual([{ year: '', kind: '長期', id: expect.any(String), op: '並べ替え', extra: { after: '' } }]);
+    expect(texts()).toEqual(['作り物の習得スキルC', '作り物の習得スキルA', '作り物の習得スキルB・改']);
+
+    openMenu('「作り物の習得スキルA」の操作');
+    choose('削除する（灰色で残る）');
+    dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).not.toContain('この姿の');
+    fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }));
+    expect(screen.getByText('作り物の習得スキルA').closest('.item').className).toContain('del');
+    openMenu('「作り物の習得スキルA」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
@@ -647,7 +713,7 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    const work = () => [...document.querySelectorAll('.longterm-screen > .list')][0];
+    const work = () => [...document.querySelectorAll('.longterm-screen > .list')][1];
     const texts = () => [...work().querySelectorAll('.vision > .item .tx')].map((x) => x.textContent);
     // 1つしかない面には出さない
     openMenu('プライベート面の操作');

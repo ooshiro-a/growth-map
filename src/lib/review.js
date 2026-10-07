@@ -115,7 +115,10 @@ export function roadmapItems(model, layer) {
   return model.list(model.flat(KIND.LONGTERM), `L:${layer}`);
 }
 
-// ありたい姿の下の必要なスキル。スキルの削除は親の姿の削除も含める
+// 習得すべきスキル（面の上の1段の一覧）
+export const longSkills = (model) => model.list(model.flat(KIND.LONGTERM), `L:${LAYER.LONG_SKILL}`);
+
+// ありたい姿の下の必要なスキルや考え方など。スキルの削除は親の姿の削除も含める
 export function roadmapSkills(model, item) {
   const v = model.flat(KIND.LONGTERM);
   return model
