@@ -5,9 +5,11 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { GRAY_NOTE, SORT_LABEL, SortHead, SortRow, shift } from '../components/Sort.jsx';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
-import { ROADMAP_PARTS, orderMoves, roadmapItems, roadmapSkills } from '../lib/review.js';
+import { orderMoves } from '../lib/order.js';
+import { ROADMAP_PARTS, roadmapItems, roadmapSkills } from '../lib/review.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
 
 const K = KIND.LONGTERM;
@@ -149,34 +151,6 @@ function liveOrder(model, layer) {
 }
 const canSort = (o) => o.top.length > 1 || Object.values(o.kids).some((k) => k.length > 1);
 
-// 配列の i 番目を d（-1 上・+1 下）へ1つ動かす
-const shift = (list, i, d) => {
-  const out = list.slice();
-  [out[i], out[i + d]] = [out[i + d], out[i]];
-  return out;
-};
-
-// 並べ替えの1行：文言と ↑↓
-function SortRow({ e, i, n, onMove, className = '' }) {
-  if (!e) return null; // 並べ替え中に別の端末で完全に削除された時
-  return (
-    <div className={`item sort-row ${className}`}>
-      <span className="tx">
-        {e.attrs.when && <span className="lead">{e.attrs.when}</span>}
-        {e.text}
-      </span>
-      <span className="sort-btns">
-        <button type="button" className="sort-btn" aria-label={`「${e.text}」を上へ`} disabled={i === 0} onClick={() => onMove(i, -1)}>
-          ↑
-        </button>
-        <button type="button" className="sort-btn" aria-label={`「${e.text}」を下へ`} disabled={i === n - 1} onClick={() => onMove(i, 1)}>
-          ↓
-        </button>
-      </span>
-    </div>
-  );
-}
-
 // 1つの面の並べ替え。↑↓ は下書きだけ動かし、「保存する」で動いた項目の分だけ記録を足す
 function SortPart({ label, layer, onDone }) {
   const { model } = useApp();
@@ -195,17 +169,7 @@ function SortPart({ label, layer, onDone }) {
   const hasGray = roadmapItems(model, layer).some((e) => e.deletedRec || roadmapSkills(model, e).some((s) => s.deleted));
   return (
     <section className="list sorting" aria-label={`${label}の並べ替え`}>
-      <div className="sec">
-        <span>{label}を並べ替え</span>
-        <span className="sort-acts">
-          <button type="button" className="btn small" onClick={onDone}>
-            やめる
-          </button>
-          <button type="button" className="btn small primary" disabled={moves.length === 0} onClick={save}>
-            保存する
-          </button>
-        </span>
-      </div>
+      <SortHead label={label} canSave={moves.length > 0} onCancel={onDone} onSave={save} />
       {draft.top.map((id, i) => {
         const kids = draft.kids[id];
         return (
@@ -228,7 +192,7 @@ function SortPart({ label, layer, onDone }) {
           </div>
         );
       })}
-      {hasGray && <p className="note">灰色（削除した項目）は元の場所のまま動きません</p>}
+      {hasGray && <p className="note">{GRAY_NOTE}</p>}
     </section>
   );
 }
@@ -240,7 +204,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
   const sortable = !locked && canSort(liveOrder(model, layer));
   const hist = (e) => ({ label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) });
   const purge = (e) => ({ label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) });
-  const sortItem = sortable ? [{ label: '並べ替える', onSelect: onSort }] : [];
+  const sortItem = sortable ? [{ label: SORT_LABEL, onSelect: onSort }] : [];
   const visionMenu = (e) =>
     locked
       ? [hist(e)]

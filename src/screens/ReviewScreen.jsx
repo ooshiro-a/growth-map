@@ -7,8 +7,10 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { SORT_LABEL, SortList } from '../components/Sort.jsx';
 import { now } from '../lib/clock.js';
 import { newId } from '../lib/ids.js';
+import { canSortItems } from '../lib/order.js';
 import { dateLine, writtenLine } from '../lib/labels.js';
 import {
   QUARTERS,
@@ -84,6 +86,7 @@ export function GoalSection({
   const { model, write } = useApp();
   const goals = goalsOf(model, goalYear, layer);
   const [dialog, setDialog] = useState(null);
+  const [sorting, setSorting] = useState(false);
   // limit：スマホのホームで出す数（超えた分は「ほか○件」で開く）
   const cap = useCap(goals.length, limit);
 
@@ -92,6 +95,9 @@ export function GoalSection({
   const add = (text, after) => ok(write([row({ id: newId(), op: OP.ADD, text, extra: after === undefined ? undefined : { after } })]));
   const edit = (g, text) => ok(write([row({ id: g.id, op: OP.EDIT, text })]));
   const remove = (g) => ok(write([row({ id: g.id, op: OP.DELETE })]));
+  // 並べ替え：その年（その四半期）の目標の中だけで動く。行には年と層を書く
+  const move = (moves) => ok(write(moves.map(({ id, after }) => row({ id, op: OP.MOVE, extra: { after } }))));
+  const sortItem = !locked && canSortItems(goals) ? { label: SORT_LABEL, onSelect: () => setSorting(true) } : null;
   const onJudge = (g, op) => write([op ? row({ id: g.id, op }) : row({ id: g.id, op: OP.STATUS, value: '' })]);
 
   // 未達を次の四半期へ写す（同じ文言がもう写す先にあれば写さない）
@@ -120,6 +126,7 @@ export function GoalSection({
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', g }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', after: g.id }) },
           carryItem(g),
+          sortItem,
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', g }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', g }) },
           { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', g }) },
@@ -127,8 +134,11 @@ export function GoalSection({
   const sectionMenu = [
     { label: '目標を追加', onSelect: () => setDialog({ type: 'add' }) },
     toCarry.length > 0 && { label: `未達を${carryTo.label}へ写す（${toCarry.length}件）`, onSelect: () => carry(toCarry) },
+    sortItem,
   ];
   const c = judge ? goalCounts(goals) : null;
+
+  if (sorting && !locked) return <SortList label={title} items={goals} onSave={move} onDone={() => setSorting(false)} />;
 
   return (
     <section className={`list${cap.cls}`}>

@@ -6,9 +6,11 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { SORT_LABEL, SortList } from '../components/Sort.jsx';
 import { now } from '../lib/clock.js';
 import { icebergYear } from '../lib/iceberg.js';
 import { newId } from '../lib/ids.js';
+import { canSortItems } from '../lib/order.js';
 import { dateLine } from '../lib/labels.js';
 import { QUARTER_MONTHS, currentQuarter, reviewSteps } from '../lib/review.js';
 import { KIND, LAYER, OP, quarterLayer } from '../lib/schema.js';
@@ -79,6 +81,7 @@ function Principles({ year, locked }) {
   const { model, write } = useApp();
   const list = principlesOf(model);
   const [dialog, setDialog] = useState(null);
+  const [sorting, setSorting] = useState(false);
   const cap = useCap(list.length, HOME_LIMIT);
 
   const ok = (rows) => rows != null;
@@ -97,6 +100,8 @@ function Principles({ year, locked }) {
   };
   const edit = (e, text) => ok(write([{ year: '', kind: K, id: e.id, op: OP.EDIT, text }]));
   const remove = (e) => ok(write([{ year: '', kind: K, id: e.id, op: OP.DELETE }]));
+  const move = (moves) => ok(write(moves.map(({ id, after }) => ({ year: '', kind: K, id, op: OP.MOVE, extra: { after } }))));
+  const sortItem = !locked && canSortItems(list) ? { label: SORT_LABEL, onSelect: () => setSorting(true) } : null;
 
   const menuFor = (e) =>
     locked
@@ -109,11 +114,13 @@ function Principles({ year, locked }) {
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', after: e.id }) },
+          sortItem,
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
           { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
   const close = () => setDialog(null);
+  if (sorting && !locked) return <SortList className="principles" label="指標" items={list} onSave={move} onDone={() => setSorting(false)} />;
 
   return (
     <section className={`list principles${cap.cls}`}>
@@ -127,6 +134,7 @@ function Principles({ year, locked }) {
             items={[
               { label: '手で打って追加', onSelect: () => setDialog({ type: 'add' }) },
               { label: 'アイスバーグから選ぶ', onSelect: () => setDialog({ type: 'pick' }) },
+              sortItem,
             ]}
           />
         )}

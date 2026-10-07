@@ -6,8 +6,10 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { SORT_LABEL, SortList } from '../components/Sort.jsx';
 import { BRAKE_KINDS, BRAKE_KIND_NAME, CONTROL, FACING, PLACE, PLAN_LABEL, RELEASED, brakeYear, isReleased } from '../lib/brake.js';
 import { newId } from '../lib/ids.js';
+import { canSortItems } from '../lib/order.js';
 import { BRAKE_STATUS, dateLine } from '../lib/labels.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
 
@@ -140,6 +142,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
   const locked = viewOnly || readOnly || (model.currentYear != null && year < model.currentYear);
   const { groups, released } = useMemo(() => brakeYear(model, year), [model, year]);
   const [dialog, setDialog] = useState(null);
+  const [sorting, setSorting] = useState(null); // 並べ替え中の欄（悩み／大きな子ども）
   const close = () => setDialog(null);
 
   const ok = (rows) => rows != null;
@@ -178,6 +181,12 @@ export function BrakeScreen({ year, viewOnly = false }) {
   };
   const setStatus = (e, value) => ok(write([{ year, kind: B, id: e.id, op: OP.STATUS, value }]));
   const remove = (e) => ok(write([{ year, kind: B, id: e.id, op: OP.DELETE }]));
+  // 並べ替え：その年の地図に書く（翌年にも同じ並びで引き継ぐ）
+  const move = (moves) => ok(write(moves.map(({ id, after }) => ({ year, kind: B, id, op: OP.MOVE, extra: { after } }))));
+  const sortItem = (k) => {
+    const g = groups.find((x) => x.k === k);
+    return !locked && g && canSortItems(g.items) ? { label: SORT_LABEL, onSelect: () => setSorting(k) } : null;
+  };
 
   const menuFor = (e) =>
     locked
@@ -194,6 +203,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
             ? { label: '「向き合い中」に戻す', onSelect: () => setStatus(e, FACING) }
             : { label: '「外せた」にする', onSelect: () => setStatus(e, RELEASED) },
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', kind: e.layer, after: e.id }) },
+          sortItem(e.layer),
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
           { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
@@ -213,29 +223,35 @@ export function BrakeScreen({ year, viewOnly = false }) {
         この年に外せたブレーキ：<b>{released}</b>
       </p>
 
-      {groups.map((g) => (
-        <section className="list" key={g.k}>
-          <div className="sec">
-            <span>{g.name}</span>
-            {!locked && <MoreMenu small label={`${g.name}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', kind: g.k }) }]} />}
-          </div>
-          {g.k === LAYER.WORRY && <p className="note">分かれ道の悩みか、決めた道の上の悩みか。自分で変えられるか</p>}
-          {g.k === LAYER.CHILD && <p className="note">自分の中の「大きな子ども」が出た場面や傾向</p>}
-          {g.items.length === 0 && <p className="note">まだありません</p>}
-          {g.items.map((e) => (
-            <ItemRow
-              key={e.id}
-              className="brake-item"
-              text={e.text}
-              sub={<Sub e={e} />}
-              date={dateLine(e, { perYear: true })}
-              deleted={!!e.deletedRec}
-              pending={isPending(e)}
-              menu={menuFor(e)}
-            />
-          ))}
-        </section>
-      ))}
+      {groups.map((g) =>
+        sorting === g.k && !locked ? (
+          <SortList key={g.k} label={g.name} items={g.items} onSave={move} onDone={() => setSorting(null)} />
+        ) : (
+          <section className="list" key={g.k}>
+            <div className="sec">
+              <span>{g.name}</span>
+              {!locked && (
+                <MoreMenu small label={`${g.name}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', kind: g.k }) }, sortItem(g.k)]} />
+              )}
+            </div>
+            {g.k === LAYER.WORRY && <p className="note">分かれ道の悩みか、決めた道の上の悩みか。自分で変えられるか</p>}
+            {g.k === LAYER.CHILD && <p className="note">自分の中の「大きな子ども」が出た場面や傾向</p>}
+            {g.items.length === 0 && <p className="note">まだありません</p>}
+            {g.items.map((e) => (
+              <ItemRow
+                key={e.id}
+                className="brake-item"
+                text={e.text}
+                sub={<Sub e={e} />}
+                date={dateLine(e, { perYear: true })}
+                deleted={!!e.deletedRec}
+                pending={isPending(e)}
+                menu={menuFor(e)}
+              />
+            ))}
+          </section>
+        ),
+      )}
       <p className="note">外せたブレーキは翌年に引き継がず、この年の記録として残ります</p>
 
       {dialog?.type === 'addAny' && (

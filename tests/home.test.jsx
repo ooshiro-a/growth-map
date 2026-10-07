@@ -319,6 +319,74 @@ describe('ホームの画面', () => {
     openMenu('「作り物の指標」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
   });
+
+  it('並べ替え：指標と今年の目標。↑↓ で動かし、保存で動いた分だけ記録（目標は年と層つき）。ほかの年の目標は出ない', () => {
+    const log = [];
+    const initial = [
+      r({ kind: P, id: 'np1', op: OP.ADD, text: '作り物の指標1' }),
+      r({ kind: P, id: 'np2', op: OP.ADD, text: '作り物の指標2' }),
+      r({ year: 2025, kind: G, id: 'ng0', op: OP.ADD, text: '作り物の去年の目標' }),
+      r({ year: 2026, kind: G, id: 'ng1', op: OP.ADD, text: '作り物の目標1' }),
+      r({ year: 2026, kind: G, id: 'ng2', op: OP.ADD, text: '作り物の目標2' }),
+      r({ year: 2026, kind: G, id: 'ng3', op: OP.ADD, text: '作り物の目標3' }),
+      r({ year: 2026, kind: G, id: 'ng4', op: OP.ADD, text: '作り物の目標4' }),
+      r({ year: 2026, kind: G, id: 'ng4', op: OP.DELETE }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <HomeScreen />
+      </Harness>,
+    );
+    const goalTexts = () => [...screen.getByRole('button', { name: '今年の目標の操作' }).closest('section').querySelectorAll('.item .tx')].map((x) => x.textContent);
+
+    // 指標：「…」→「並べ替える」→ 2を上へ → 保存
+    openMenu('「作り物の指標2」の操作');
+    choose('並べ替える');
+    let sort = screen.getByRole('region', { name: '指標の並べ替え' });
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の指標2」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ year: '', kind: '指標', op: '並べ替え' });
+    expect(principlesOf(buildModel(initial.concat(log.map((d, i) => toRow({ ...d, at: '2026-09-28T11:00:00.000+09:00', no: `rsort${i}xxxx` }))), [], { currentYear: 2026 })).map((e) => e.id)).toEqual(['np2', 'np1']);
+
+    // 今年の目標：並べ替えの間は3件までの制限を外し、灰色と去年の目標は出さない
+    openMenu('今年の目標の操作');
+    choose('並べ替える');
+    sort = screen.getByRole('region', { name: '今年の目標の並べ替え' });
+    expect([...sort.querySelectorAll('.tx')].map((x) => x.textContent)).toEqual(['作り物の目標1', '作り物の目標2', '作り物の目標3']);
+    expect(within(sort).getByText('灰色（削除した項目）は元の場所のまま動きません')).toBeTruthy();
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の目標1」を下へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の目標1」を下へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log.at(-1)).toEqual({ year: 2026, kind: '目標', layer: '', id: 'ng1', op: '並べ替え', extra: { after: 'ng3' } });
+    expect(goalTexts()).toEqual(['作り物の目標2', '作り物の目標3', '作り物の目標1', '作り物の目標4']);
+  });
+
+  it('並べ替え：1つしかない欄・見るだけの時は出さない', () => {
+    const initial = [
+      r({ kind: P, id: 'np1', op: OP.ADD, text: '作り物の指標' }),
+      r({ year: 2026, kind: G, id: 'ng1', op: OP.ADD, text: '作り物の目標1' }),
+      r({ year: 2026, kind: G, id: 'ng2', op: OP.ADD, text: '作り物の目標2' }),
+    ];
+    render(
+      <Harness log={[]} initial={initial}>
+        <HomeScreen />
+      </Harness>,
+    );
+    openMenu('指標の操作');
+    expect(screen.queryByRole('menuitem', { name: '並べ替える' })).toBeNull();
+    openMenu('指標の操作');
+    openMenu('今年の目標の操作');
+    expect(screen.getByRole('menuitem', { name: '並べ替える' })).toBeTruthy();
+    cleanup();
+    render(
+      <Harness log={[]} initial={initial} readOnly>
+        <HomeScreen />
+      </Harness>,
+    );
+    openMenu('「作り物の目標1」の操作');
+    expect(screen.queryByRole('menuitem', { name: '並べ替える' })).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------- 上部の道のり

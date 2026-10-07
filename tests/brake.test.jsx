@@ -263,6 +263,7 @@ describe('ブレーキの画面', () => {
       'アクションプランを書く',
       '「外せた」にする',
       'この下に追加',
+      '並べ替える',
       '削除する（灰色で残る）',
       '履歴を見る',
       '完全に削除する',
@@ -350,5 +351,51 @@ describe('ブレーキの画面', () => {
     expect(screen.queryByRole('button', { name: '悩みブレーキの操作' })).toBeNull();
     openMenu('「作り物の外せた悩み」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+  });
+
+  it('並べ替え：欄ごとに ↑↓。その年の地図に書き、翌年にも同じ並びで引き継ぐ。前の年には出さない', () => {
+    const log = [];
+    const initial = [
+      add(2025, 'nb1', W, '作り物の悩みA'),
+      add(2025, 'nb2', W, '作り物の悩みB'),
+      add(2026, 'nb3', W, '作り物の悩みC'),
+      add(2026, 'nc1', CH, '作り物の子ども'),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <BrakeScreen year={2026} />
+      </Harness>,
+    );
+    // 1つしかない欄には出さない
+    openMenu('大きな子どもブレーキの操作');
+    expect(screen.queryByRole('menuitem', { name: '並べ替える' })).toBeNull();
+    openMenu('大きな子どもブレーキの操作');
+
+    openMenu('悩みブレーキの操作');
+    choose('並べ替える');
+    const sort = screen.getByRole('region', { name: '悩みブレーキの並べ替え' });
+    // 札・アクションプランは出さず文言だけ
+    expect(sort.querySelector('.bchip')).toBeNull();
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の悩みC」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の悩みC」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log).toEqual([{ year: 2026, kind: 'ブレーキ', id: 'nb3', op: '並べ替え', extra: { after: '' } }]);
+    const texts = () => [...document.querySelectorAll('.brake-item .tx')].map((x) => x.textContent);
+    expect(texts()).toEqual(['作り物の悩みC', '作り物の悩みA', '作り物の悩みB', '作り物の子ども']);
+
+    // 翌年に引き継ぎ、前の年（2025年）の並びは変わらない
+    const rows = initial.concat(log.map((d, i) => toRow({ ...d, at: '2026-09-29T11:00:00.000+09:00', no: `rbsort${i}xxxx` })));
+    const m = buildModel(rows, [], { currentYear: 2027 });
+    expect(ids(brakeYear(m, 2027).groups[0].items)).toEqual(['nb3', 'nb1', 'nb2']);
+    expect(ids(brakeYear(m, 2025).groups[0].items)).toEqual(['nb1', 'nb2']);
+
+    cleanup();
+    render(
+      <Harness log={[]} currentYear={2027} initial={rows}>
+        <BrakeScreen year={2026} />
+      </Harness>,
+    );
+    openMenu('「作り物の悩みA」の操作');
+    expect(screen.queryByRole('menuitem', { name: '並べ替える' })).toBeNull();
   });
 });

@@ -17,16 +17,16 @@ import {
   goalsOf,
   missedToCarry,
   nextQuarter,
-  orderMoves,
   reviewEntry,
   reviewYears,
   roadmapItems,
   roadmapSkills,
 } from '../src/lib/review.js';
 import { KIND, LAYER, OP, quarterLayer, quarterOfLayer, reviewId, toRow } from '../src/lib/schema.js';
+import { orderMoves } from '../src/lib/order.js';
 import { growthYears } from '../src/lib/timeline.js';
 import { LongtermScreen } from '../src/screens/LongtermScreen.jsx';
-import { ReviewScreen } from '../src/screens/ReviewScreen.jsx';
+import { GoalSection, ReviewScreen } from '../src/screens/ReviewScreen.jsx';
 import { ids, r, resetNo } from './helpers.js';
 
 afterEach(cleanup);
@@ -532,6 +532,37 @@ describe('四半期の振り返りの画面', () => {
     expect(screen.queryByText(/へ写せます/)).toBeNull();
     openMenu('「作り物の古い2Qの目標」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る']);
+  });
+
+  it('四半期の目標の並べ替え：その四半期の中だけ。行には年と層を書く。「やめる」は何も書かない', () => {
+    const log = [];
+    const initial = [
+      r({ year: 2026, kind: G, id: 'nq1', op: OP.ADD, layer: 'q4', text: '作り物の4Q目標1' }),
+      r({ year: 2026, kind: G, id: 'nq2', op: OP.ADD, layer: 'q4', text: '作り物の4Q目標2' }),
+      r({ year: 2026, kind: G, id: 'nq3', op: OP.ADD, layer: 'q3', text: '作り物の3Q目標' }),
+      r({ year: 2026, kind: G, id: 'ny1', op: OP.ADD, text: '作り物の年の目標' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <GoalSection num={3} title="4Qの目標" goalYear={2026} layer="q4" toResult={false} locked={false} emptyText="まだありません" />
+      </Harness>,
+    );
+    openMenu('4Qの目標の操作');
+    choose('並べ替える');
+    let sort = screen.getByRole('region', { name: '4Qの目標の並べ替え' });
+    expect([...sort.querySelectorAll('.tx')].map((x) => x.textContent)).toEqual(['作り物の4Q目標1', '作り物の4Q目標2']);
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の4Q目標2」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: 'やめる' }));
+    expect(log).toHaveLength(0);
+
+    openMenu('「作り物の4Q目標2」の操作');
+    choose('並べ替える');
+    sort = screen.getByRole('region', { name: '4Qの目標の並べ替え' });
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物の4Q目標2」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ year: 2026, kind: '目標', layer: 'q4', op: '並べ替え' });
+    expect([...document.querySelectorAll('.item .tx')].map((x) => x.textContent)).toEqual(['作り物の4Q目標2', '作り物の4Q目標1']);
   });
 });
 
