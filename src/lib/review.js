@@ -127,6 +127,9 @@ export function childItems(model, item, layer) {
 // ありたい姿の下の必要なスキルや考え方など
 export const roadmapSkills = (model, item) => childItems(model, item, LAYER.ROADMAP_SKILL);
 
-// 習得すべきスキル（いちばん上の欄）と、その下のサブスキル
+// 人生の個人テーマ（いちばん上の欄。下の段はない）
+export const lifeThemes = (model) => roadmapItems(model, LAYER.LIFE_THEME);
+
+// 習得すべきスキル（個人テーマの下の欄）と、その下のサブスキル
 export const longSkills = (model) => roadmapItems(model, LAYER.LONG_SKILL);
 export const longSubs = (model, item) => childItems(model, item, LAYER.LONG_SUB);

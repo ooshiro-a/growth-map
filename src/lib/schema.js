@@ -71,7 +71,8 @@ export const LAYER = {
   Q2: 'q2',
   Q3: 'q3',
   Q4: 'q4',
-  // 長期プラン（習得すべきスキルとその下のサブスキル、仕事面・プライベート面の姿と、その下の必要なスキルや考え方など）
+  // 長期プラン（人生の個人テーマ、習得すべきスキルとその下のサブスキル、仕事面・プライベート面の姿と、その下の必要なスキルや考え方など）
+  LIFE_THEME: 'lifeTheme',
   LONG_SKILL: 'longSkill',
   LONG_SUB: 'longSub',
   ROADMAP_WORK: 'roadmapWork',

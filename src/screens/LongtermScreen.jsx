@@ -16,15 +16,17 @@ const K = KIND.LONGTERM;
 const SKILL = LAYER.ROADMAP_SKILL;
 const LONG = LAYER.LONG_SKILL;
 const SUB = LAYER.LONG_SUB;
+const THEME = LAYER.LIFE_THEME;
+const THEME_LABEL = '人生の個人テーマ';
 const LONG_LABEL = '習得すべきスキル';
 const SKILL_LABEL = '必要なスキルや考え方など';
 const SUB_LABEL = 'サブスキル';
-// 上から：習得すべきスキル（＞サブスキル）、仕事面・プライベート面（＞必要なスキルや考え方など）
-const PARTS = [{ layer: LONG, label: LONG_LABEL }, ...ROADMAP_PARTS];
-// 親の層 → 下の段の層・親の呼び名
+// 上から：人生の個人テーマ、習得すべきスキル（＞サブスキル）、仕事面・プライベート面（＞必要なスキルや考え方など）
+const PARTS = [{ layer: THEME, label: THEME_LABEL }, { layer: LONG, label: LONG_LABEL }, ...ROADMAP_PARTS];
+// 親の層 → 下の段の層・親の呼び名（個人テーマは下の段なし）
 const CHILD = { [LAYER.ROADMAP_WORK]: SKILL, [LAYER.ROADMAP_PRIVATE]: SKILL, [LONG]: SUB };
 const OWNER = { [LAYER.ROADMAP_WORK]: '姿', [LAYER.ROADMAP_PRIVATE]: '姿', [LONG]: 'スキル' };
-const NAME = { [SKILL]: SKILL_LABEL, [LONG]: LONG_LABEL, [SUB]: SUB_LABEL };
+const NAME = { [SKILL]: SKILL_LABEL, [THEME]: THEME_LABEL, [LONG]: LONG_LABEL, [SUB]: SUB_LABEL };
 const isPending = (e) => e.history.some((r) => r.pending);
 
 // 入れる欄（text は必須、ほかは空でもよい）
@@ -36,6 +38,7 @@ const FIELDS = {
   [LAYER.ROADMAP_WORK]: VISION,
   [LAYER.ROADMAP_PRIVATE]: VISION,
   [SKILL]: [{ key: 'text', label: SKILL_LABEL }],
+  [THEME]: [{ key: 'text', label: THEME_LABEL }],
   [LONG]: [{ key: 'text', label: LONG_LABEL }],
   [SUB]: [{ key: 'text', label: SUB_LABEL }],
 };
@@ -157,11 +160,14 @@ function Dialogs({ dialog, setDialog, lt }) {
   return null;
 }
 
+// 下の段（下の段のない欄は空）
+const kidsItems = (model, e) => (CHILD[e.layer] ? childItems(model, e, CHILD[e.layer]) : []);
+
 // 並べ替えの下書き：生きている親と、その下の生きている項目の番号
 function liveOrder(model, layer) {
   const top = roadmapItems(model, layer).filter((e) => !e.deletedRec);
   const kids = {};
-  for (const e of top) kids[e.id] = childItems(model, e, CHILD[layer]).filter((s) => !s.deleted).map((s) => s.e.id);
+  for (const e of top) kids[e.id] = kidsItems(model, e).filter((s) => !s.deleted).map((s) => s.e.id);
   return { top: top.map((e) => e.id), kids };
 }
 const canSort = (o) => o.top.length > 1 || Object.values(o.kids).some((k) => k.length > 1);
@@ -181,7 +187,7 @@ function SortPart({ label, layer, onDone }) {
   const save = () => {
     if (lt.move(moves)) onDone();
   };
-  const hasGray = roadmapItems(model, layer).some((e) => e.deletedRec || childItems(model, e, CHILD[layer]).some((s) => s.deleted));
+  const hasGray = roadmapItems(model, layer).some((e) => e.deletedRec || kidsItems(model, e).some((s) => s.deleted));
   return (
     <section className="list sorting" aria-label={`${label}の並べ替え`}>
       <SortHead label={label} canSave={moves.length > 0} onCancel={onDone} onSave={save} />
@@ -212,7 +218,7 @@ function SortPart({ label, layer, onDone }) {
   );
 }
 
-// 1つの面：親（時期＋ありたい姿／習得すべきスキル）と、その下の段（必要なスキルや考え方など／サブスキル）
+// 1つの面：親（時期＋ありたい姿／習得すべきスキル／人生の個人テーマ）と、その下の段（必要なスキルや考え方など／サブスキル。個人テーマはなし）
 function Part({ label, layer, locked, onSort, setDialog }) {
   const { model } = useApp();
   const items = roadmapItems(model, layer);
@@ -229,7 +235,7 @@ function Part({ label, layer, locked, onSort, setDialog }) {
       ? [hist(e), purge(e)]
       : [
           { label: '編集する', onSelect: () => setDialog({ type: 'edit', e }) },
-          { label: `${childName}を追加`, onSelect: () => setDialog({ type: 'add', layer: child, parent: e.id }) },
+          ...(child ? [{ label: `${childName}を追加`, onSelect: () => setDialog({ type: 'add', layer: child, parent: e.id }) }] : []),
           { label: 'この下に追加', onSelect: () => setDialog({ type: 'add', layer: e.layer, after: e.id }) },
           ...sortItem,
           { label: '削除する（灰色で残る）', warn: true, onSelect: () => setDialog({ type: 'del', e }) },
@@ -249,6 +255,38 @@ function Part({ label, layer, locked, onSort, setDialog }) {
           hist(s),
           purge(s),
         ];
+  // 親と、その下の段の1組
+  const group = (e) => {
+    const skills = childItems(model, e, child);
+    return (
+      <div key={e.id} className={`vision${e.deletedRec ? ' del' : ''}`}>
+        <ItemRow
+          text={e.text}
+          lead={e.attrs.when || null}
+          date={dateLine(e)}
+          deleted={!!e.deletedRec}
+          pending={isPending(e)}
+          menu={visionMenu(e)}
+        />
+        {(skills.length > 0 || !(locked || e.deletedRec)) && (
+          <div className="means skills">
+            {skills.length === 0 && <p className="note">（「…」→「{childName}を追加」）</p>}
+            {skills.map(({ e: s, deleted }) => (
+              <ItemRow
+                key={s.id}
+                className="skill"
+                text={s.text}
+                date={dateLine(s, { deleted })}
+                deleted={!!deleted}
+                pending={isPending(s)}
+                menu={skillMenu(s, deleted)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
   return (
     <section className="list">
       <div className="sec">
@@ -258,42 +296,19 @@ function Part({ label, layer, locked, onSort, setDialog }) {
         )}
       </div>
       {items.length === 0 && <p className="note">まだありません</p>}
-      {items.map((e) => {
-        const skills = childItems(model, e, child);
-        return (
-          <div key={e.id} className={`vision${e.deletedRec ? ' del' : ''}`}>
-            <ItemRow
-              text={e.text}
-              lead={e.attrs.when || null}
-              date={dateLine(e)}
-              deleted={!!e.deletedRec}
-              pending={isPending(e)}
-              menu={visionMenu(e)}
-            />
-            {(skills.length > 0 || !(locked || e.deletedRec)) && (
-              <div className="means skills">
-                {skills.length === 0 && <p className="note">（「…」→「{childName}を追加」）</p>}
-                {skills.map(({ e: s, deleted }) => (
-                  <ItemRow
-                    key={s.id}
-                    className="skill"
-                    text={s.text}
-                    date={dateLine(s, { deleted })}
-                    deleted={!!deleted}
-                    pending={isPending(s)}
-                    menu={skillMenu(s, deleted)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {child ? (
+        // 習得すべきスキルは PC で2列（1・2が1行目、3・4が2行目…）。スマホは縦
+        <div className={layer === LONG ? 'grid2' : undefined}>{items.map(group)}</div>
+      ) : (
+        items.map((e) => (
+          <ItemRow key={e.id} text={e.text} date={dateLine(e)} deleted={!!e.deletedRec} pending={isPending(e)} menu={visionMenu(e)} />
+        ))
+      )}
     </section>
   );
 }
 
-// 長期プラン（年をまたぐ）：習得すべきスキル ＞ サブスキル、仕事面／プライベート面 ＞ 時期＋ありたい姿 ＞ 必要なスキルや考え方など
+// 長期プラン（年をまたぐ）：人生の個人テーマ、習得すべきスキル ＞ サブスキル、仕事面／プライベート面 ＞ 時期＋ありたい姿 ＞ 必要なスキルや考え方など
 export function LongtermScreen() {
   const { readOnly } = useApp();
   const lt = useLongtermWrite();
@@ -307,9 +322,9 @@ export function LongtermScreen() {
     );
   return (
     <div className="longterm-screen">
-      {part(PARTS[0])}
+      {PARTS.slice(0, 2).map(part)}
       {/* 仕事面・プライベート面：PC は左右に並べる（スマホは縦） */}
-      <div className="plan-cols">{PARTS.slice(1).map(part)}</div>
+      <div className="plan-cols">{PARTS.slice(2).map(part)}</div>
       <p className="note">ありたい姿は時期の遠い順（ありたい姿から逆算）に並べると見やすくなります。「…」→「並べ替える」で順番を変えられます</p>
       <Dialogs dialog={dialog} setDialog={setDialog} lt={lt} />
     </div>

@@ -642,10 +642,12 @@ describe('長期プランの画面', () => {
       </Harness>,
     );
     const lists = () => [...document.querySelectorAll('.longterm-screen .list')];
-    expect(lists().map((x) => x.querySelector('.sec span').textContent)).toEqual(['習得すべきスキル', '仕事面', 'プライベート面']);
-    // 仕事面・プライベート面は左右に並べる枠の中（習得すべきスキルは外で横幅いっぱい）
-    expect(lists().map((x) => x.parentElement.className)).toEqual(['longterm-screen', 'plan-cols', 'plan-cols']);
-    const texts = () => [...lists()[0].querySelectorAll('.item .tx')].map((x) => x.textContent);
+    expect(lists().map((x) => x.querySelector('.sec span').textContent)).toEqual(['人生の個人テーマ', '習得すべきスキル', '仕事面', 'プライベート面']);
+    // 仕事面・プライベート面は左右に並べる枠の中（個人テーマ・習得すべきスキルは外で横幅いっぱい）
+    expect(lists().map((x) => x.parentElement.className)).toEqual(['longterm-screen', 'longterm-screen', 'plan-cols', 'plan-cols']);
+    // 習得すべきスキルの組は PC で2列にする枠の中
+    expect(lists()[1].querySelector('.vision').parentElement.className).toBe('grid2');
+    const texts = () => [...lists()[1].querySelectorAll('.item .tx')].map((x) => x.textContent);
     // 1つだけの時は並べ替えを出さない
     openMenu('「作り物の習得スキルA」の操作');
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual([
@@ -668,8 +670,9 @@ describe('長期プランの画面', () => {
     fireEvent.change(within(dialog).getByRole('textbox', { name: '習得すべきスキル' }), { target: { value: '作り物の習得スキルC' } });
     fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
     expect(texts()).toEqual(['作り物の習得スキルA', '作り物の習得スキルB', '作り物の習得スキルC']);
-    // 仕事面には混ざらない
-    expect(lists()[1].textContent).not.toContain('作り物の習得スキル');
+    // 仕事面・個人テーマには混ざらない
+    expect(lists()[2].textContent).not.toContain('作り物の習得スキル');
+    expect(lists()[0].textContent).not.toContain('作り物の習得スキル');
 
     openMenu('「作り物の習得スキルB」の操作');
     choose('編集する');
@@ -698,6 +701,67 @@ describe('長期プランの画面', () => {
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
+  it('人生の個人テーマ：いちばん上の欄（下の段なし）。追加・この下に追加・編集・並べ替え・削除（灰色）', () => {
+    const log = [];
+    const T = LAYER.LIFE_THEME;
+    const initial = [
+      r({ kind: L, id: 'nt1', op: OP.ADD, layer: T, text: '作り物のテーマA' }),
+      r({ kind: L, id: 'nk1', op: OP.ADD, layer: LAYER.LONG_SKILL, text: '作り物の習得スキルA' }),
+    ];
+    render(
+      <Harness log={log} initial={initial}>
+        <LongtermScreen />
+      </Harness>,
+    );
+    const top = () => [...document.querySelectorAll('.longterm-screen .list')][0];
+    const texts = () => [...top().querySelectorAll('.item .tx')].map((x) => x.textContent);
+    expect(top().querySelector('.sec span').textContent).toBe('人生の個人テーマ');
+    // 下の段の枠・案内は出さない
+    expect(top().querySelector('.means')).toBeNull();
+    // 1つだけの時は並べ替えを出さない。下の段の追加もない
+    openMenu('「作り物のテーマA」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['編集する', 'この下に追加', '削除する（灰色で残る）', '履歴を見る', '完全に削除する']);
+    choose('この下に追加');
+    let dialog = screen.getByRole('dialog', { name: '人生の個人テーマを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '人生の個人テーマ' }), { target: { value: '作り物のテーマB' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(log.at(-1)).toMatchObject({ kind: '長期', op: '追加', layer: 'lifeTheme', parent: '', year: '', text: '作り物のテーマB', extra: { after: 'nt1' } });
+
+    openMenu('人生の個人テーマの操作');
+    choose('追加する');
+    dialog = screen.getByRole('dialog', { name: '人生の個人テーマを追加' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '人生の個人テーマ' }), { target: { value: '作り物のテーマC' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '追加する' }));
+    expect(texts()).toEqual(['作り物のテーマA', '作り物のテーマB', '作り物のテーマC']);
+    // 習得すべきスキルには混ざらない
+    expect([...document.querySelectorAll('.longterm-screen .list')][1].textContent).not.toContain('作り物のテーマ');
+
+    openMenu('「作り物のテーマB」の操作');
+    choose('編集する');
+    dialog = screen.getByRole('dialog', { name: '人生の個人テーマを編集' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: '人生の個人テーマ' }), { target: { value: '作り物のテーマB・改' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: '保存する' }));
+    expect(log.at(-1)).toMatchObject({ op: '修正', text: '作り物のテーマB・改' });
+
+    const before = log.length;
+    openMenu('「作り物のテーマA」の操作');
+    choose('並べ替える');
+    const sort = screen.getByRole('region', { name: '人生の個人テーマの並べ替え' });
+    fireEvent.click(within(sort).getByRole('button', { name: '「作り物のテーマC」を上へ' }));
+    fireEvent.click(within(sort).getByRole('button', { name: '保存する' }));
+    expect(log.slice(before)).toEqual([{ year: '', kind: '長期', id: expect.any(String), op: '並べ替え', extra: { after: expect.any(String) } }]);
+    expect(texts()).toEqual(['作り物のテーマA', '作り物のテーマC', '作り物のテーマB・改']);
+
+    openMenu('「作り物のテーマA」の操作');
+    choose('削除する（灰色で残る）');
+    dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).not.toContain('も灰色になります');
+    fireEvent.click(within(dialog).getByRole('button', { name: '削除する' }));
+    expect(screen.getByText('作り物のテーマA').closest('.item').className).toContain('del');
+    openMenu('「作り物のテーマA」の操作');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
+  });
+
   it('サブスキル：習得すべきスキルの下に足し、編集・この下に追加・並べ替え・削除。親を削除するとサブスキルも灰色', () => {
     const log = [];
     const S = LAYER.LONG_SKILL;
@@ -711,7 +775,7 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    const top = () => [...document.querySelectorAll('.longterm-screen .list')][0];
+    const top = () => [...document.querySelectorAll('.longterm-screen .list')][1];
     const subs = () => [...top().querySelectorAll('.skill .tx')].map((x) => x.textContent);
     expect(top().querySelectorAll('.note')[0].textContent).toBe('（「…」→「サブスキルを追加」）');
 
@@ -787,7 +851,7 @@ describe('長期プランの画面', () => {
         <LongtermScreen />
       </Harness>,
     );
-    const work = () => [...document.querySelectorAll('.longterm-screen .list')][1];
+    const work = () => [...document.querySelectorAll('.longterm-screen .list')][2];
     const texts = () => [...work().querySelectorAll('.vision > .item .tx')].map((x) => x.textContent);
     // 1つしかない面には出さない
     openMenu('プライベート面の操作');

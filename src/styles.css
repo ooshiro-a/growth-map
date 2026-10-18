@@ -1125,6 +1125,16 @@ ul.plain {
     gap: 14px;
     align-items: start;
   }
+  /* 習得すべきスキル：2列。1・2が1行目、3つ目からは次の行の左。高さは行ごとに揃える */
+  .grid2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 24px;
+  }
+  /* いちばん下の行は線を引かない（左右とも） */
+  .grid2 > .vision:nth-last-child(2):nth-child(odd) {
+    border-bottom: none;
+  }
 }
 .skills .note {
   margin: 0 0 6px;
