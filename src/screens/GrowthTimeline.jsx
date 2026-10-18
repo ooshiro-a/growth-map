@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useApp } from '../app-context.js';
+import { Rich } from '../components/Rich.jsx';
 import { CHART, TIMELINE_YEARS, chartLayout, deltaText, growthYears } from '../lib/timeline.js';
 
 const ORANGE = '#f07a1a';
@@ -103,7 +104,9 @@ export function GrowthTimeline({ onOpen }) {
                 ) : (
                   <ul className="yt-goals">
                     {p.achieved.map((g) => (
-                      <li key={g.id}>{g.text}</li>
+                      <li key={g.id}>
+                        <Rich text={g.text} />
+                      </li>
                     ))}
                   </ul>
                 )}

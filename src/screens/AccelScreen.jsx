@@ -9,6 +9,7 @@ import { MoreMenu } from '../components/MoreMenu.jsx';
 import { QUADRANT_DIR, QUADRANT_NAME, axisOf, motiveYear, scoreLine } from '../lib/accel.js';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, MOTIVE_QUADRANTS, OP, motiveQuadrantId } from '../lib/schema.js';
 
 const AX = KIND.AXIS;
@@ -268,7 +269,7 @@ export function AccelScreen({ year, viewOnly = false }) {
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.e.text}」を削除します。消さずに灰色で残ります。`}
+          message={`「${plainText(dialog.e.text)}」を削除します。消さずに灰色で残ります。`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}

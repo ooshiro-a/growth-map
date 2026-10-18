@@ -762,6 +762,31 @@ describe('長期プランの画面', () => {
     expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['履歴を見る', '完全に削除する']);
   });
 
+  it('**で囲んだ所は太字。「…」・確認の文・履歴の見出しには ** を出さない', () => {
+    const initial = [r({ kind: L, id: 'nt1', op: OP.ADD, layer: LAYER.LIFE_THEME, text: '**作り物の見出し**（作り物の説明）' })];
+    render(
+      <Harness log={[]} initial={initial}>
+        <LongtermScreen />
+      </Harness>,
+    );
+    const tx = document.querySelector('.longterm-screen .list .item .tx');
+    expect(tx.textContent).toBe('作り物の見出し（作り物の説明）');
+    expect([...tx.querySelectorAll('strong')].map((x) => x.textContent)).toEqual(['作り物の見出し']);
+    openMenu('「作り物の見出し（作り物の説明）」の操作');
+    choose('削除する（灰色で残る）');
+    expect(screen.getByRole('dialog').textContent).toContain('「作り物の見出し（作り物の説明）」を削除します。');
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'やめる' }));
+    openMenu('「作り物の見出し（作り物の説明）」の操作');
+    choose('編集する');
+    // 直す時は ** のまま
+    expect(within(screen.getByRole('dialog')).getByRole('textbox', { name: '人生の個人テーマ' }).value).toBe('**作り物の見出し**（作り物の説明）');
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'やめる' }));
+    openMenu('「作り物の見出し（作り物の説明）」の操作');
+    choose('履歴を見る');
+    const hist = screen.getByRole('dialog', { name: '履歴：作り物の見出し（作り物の説明）' });
+    expect([...hist.querySelectorAll('.hist-t strong')].map((x) => x.textContent)).toEqual(['作り物の見出し']);
+  });
+
   it('サブスキル：習得すべきスキルの下に足し、編集・この下に追加・並べ替え・削除。親を削除するとサブスキルも灰色', () => {
     const log = [];
     const S = LAYER.LONG_SKILL;

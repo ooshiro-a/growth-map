@@ -6,11 +6,13 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { Rich } from '../components/Rich.jsx';
 import { SORT_LABEL, SortList } from '../components/Sort.jsx';
 import { BRAKE_KINDS, BRAKE_KIND_NAME, CONTROL, FACING, PLACE, PLAN_LABEL, RELEASED, brakeYear, isReleased } from '../lib/brake.js';
 import { newId } from '../lib/ids.js';
 import { canSortItems } from '../lib/order.js';
 import { BRAKE_STATUS, dateLine } from '../lib/labels.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
 
 const B = KIND.BRAKE;
@@ -129,7 +131,7 @@ function Sub({ e }) {
       {e.attrs.plan && (
         <div className="bplan">
           <span className="bplan-h">{PLAN_LABEL}</span>
-          {e.attrs.plan}
+          <Rich text={e.attrs.plan} />
         </div>
       )}
     </>
@@ -278,7 +280,7 @@ export function BrakeScreen({ year, viewOnly = false }) {
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.e.text}」を削除します。消さずに灰色で残ります。`}
+          message={`「${plainText(dialog.e.text)}」を削除します。消さずに灰色で残ります。`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}

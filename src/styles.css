@@ -1117,6 +1117,13 @@ ul.plain {
 .vision > .item .tx {
   font-weight: 600;
 }
+/* **で囲んだ太字（src/components/Rich.jsx）。もともと太い見出しの中はさらに太く */
+strong {
+  font-weight: 700;
+}
+.vision > .item .tx strong {
+  font-weight: 800;
+}
 /* 長期プラン：PC は仕事面・プライベート面を左右に */
 @media (min-width: 768px) {
   .plan-cols {

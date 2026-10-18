@@ -135,6 +135,8 @@ html, body { line-height: 1.6; }
   .bar { background: var(--paper); border-bottom: none; padding: 22px 40px 14px; }
   .bar-l { font-size: 22px; }
   .body { max-width: 1000px; padding: 8px 40px 32px; margin: 0; }
+  /* 長期プランは2列が多いので、広い画面では本文を広げる（長い見出しを1行に） */
+  .body:has(.longterm-screen) { max-width: 1280px; }
 }
 .nav { background: var(--panel); }
 .nav button.on { color: var(--ai); }

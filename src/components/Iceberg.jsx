@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWidth } from '../hooks.js';
 import { FIT, estimateWidth, layoutIceberg, shortLabel } from '../lib/iceberg.js';
 import { STAGE } from '../lib/labels.js';
+import { plainText } from '../lib/rich.js';
 import { LAYER } from '../lib/schema.js';
 import { MoreMenu } from './MoreMenu.jsx';
+import { Rich } from './Rich.jsx';
 
 // 文字の幅を画面の書体で測る（測れない時は目安）
 function makeMeasure() {
@@ -53,7 +55,7 @@ export function Iceberg({ data, wide = false, menuFor, dateOf, onTip, onChip }) 
   const spec = useMemo(() => {
     const layers = {};
     for (const [layer, list] of Object.entries(data.layers)) {
-      layers[layer] = list.map((e) => ({ id: e.id, label: shortLabel(e.text), stage: e.value, deleted: !!e.deletedRec }));
+      layers[layer] = list.map((e) => ({ id: e.id, label: shortLabel(plainText(e.text)), stage: e.value, deleted: !!e.deletedRec }));
     }
     const n = data.achieved.length;
     return {
@@ -174,20 +176,24 @@ export function Iceberg({ data, wide = false, menuFor, dateOf, onTip, onChip }) 
                 <button
                   type="button"
                   className="w-btn"
-                  aria-label={`${e.text}${minus ? '' : `（${STAGE[stage] || '採点なし'}）`}${e.deletedRec ? '（削除済み）' : ''}`}
+                  aria-label={`${plainText(e.text)}${minus ? '' : `（${STAGE[stage] || '採点なし'}）`}${e.deletedRec ? '（削除済み）' : ''}`}
                   aria-expanded={isOpen}
                   onClick={() => setOpen((o) => (o === b.id ? null : b.id))}
                 >
                   {label}
                 </button>
                 <span className={`pop${align}`}>
-                  {label !== e.text.trim() && <span className="pop-full">{e.text}</span>}
+                  {label !== plainText(e.text).trim() && (
+                    <span className="pop-full">
+                      <Rich text={e.text} />
+                    </span>
+                  )}
                   {dates.map((d, i) => (
                     <span key={i} className="pop-date">
                       {d}
                     </span>
                   ))}
-                  {menu && <MoreMenu small items={menu} label={`「${e.text}」の操作`} />}
+                  {menu && <MoreMenu small items={menu} label={`「${plainText(e.text)}」の操作`} />}
                 </span>
               </span>
             );
@@ -209,7 +215,9 @@ export function Iceberg({ data, wide = false, menuFor, dateOf, onTip, onChip }) 
           <div className="berg-side" style={side ? { width: side, marginTop: Math.max(0, tipMid - 9) } : { width: '100%' }}>
             <b>成果 {n}件</b>
             {data.achieved.map((g) => (
-              <div key={g.id}>{g.text}</div>
+              <div key={g.id}>
+                <Rich text={g.text} />
+              </div>
             ))}
           </div>
         )}

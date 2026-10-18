@@ -1,7 +1,9 @@
 import { useApp } from '../app-context.js';
 import { historyText, recDate } from '../lib/labels.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, OP, quarterOfLayer } from '../lib/schema.js';
 import { Modal } from './Modal.jsx';
+import { Rich } from './Rich.jsx';
 
 // 「2026年分」。四半期の目標・振り返りは「2026年3Q分」
 function yearLabel(rec) {
@@ -14,7 +16,7 @@ export function HistorySheet({ kind, id, title, onClose }) {
   const { model } = useApp();
   const recs = model.historyOf(kind, id);
   return (
-    <Modal title={`履歴：${title}`} onClose={onClose}>
+    <Modal title={`履歴：${plainText(title)}`} onClose={onClose}>
       {recs.length === 0 ? (
         <p className="note">記録がありません</p>
       ) : (
@@ -26,7 +28,7 @@ export function HistorySheet({ kind, id, title, onClose }) {
                 <span className="hist-d">{rec.pending ? '未保存' : recDate(rec)}</span>
                 <span className="hist-t">
                   {rec.year != null && <span className="hist-y">{yearLabel(rec)}</span>}
-                  {historyText(rec, kind)}
+                  <Rich text={historyText(rec, kind)} />
                   {voided && '（打ち消し済み）'}
                 </span>
               </li>

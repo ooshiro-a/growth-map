@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../app-context.js';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
+import { plainText } from '../lib/rich.js';
 import { OP, PER_YEAR_KINDS } from '../lib/schema.js';
 import { HistorySheet } from './HistorySheet.jsx';
 import { ConfirmDialog, EditDialog } from './Modal.jsx';
@@ -71,7 +72,7 @@ export function ItemList({ kind, layer = '', year = null, title, emptyText = '�
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.e.text}」を削除します。消さずに灰色で残ります。`}
+          message={`「${plainText(dialog.e.text)}」を削除します。消さずに灰色で残ります。`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}

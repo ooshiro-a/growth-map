@@ -6,10 +6,12 @@ import { Iceberg } from '../components/Iceberg.jsx';
 import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, Modal, enterToSave } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
+import { Rich } from '../components/Rich.jsx';
 import { useMedia } from '../hooks.js';
 import { ICEBERG_LAYERS, LAYER_NAME, icebergYear } from '../lib/iceberg.js';
 import { newId } from '../lib/ids.js';
 import { STAGE, STAGE_HINT, dateLine, recDate } from '../lib/labels.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, LAYER, OP, SCORED_LAYERS } from '../lib/schema.js';
 
 const K = KIND.ICEBERG;
@@ -194,7 +196,7 @@ export function IcebergScreen({ year, viewOnly = false }) {
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.e.text}」を削除します。消さずに灰色で残り、点数には入りません。`}
+          message={`「${plainText(dialog.e.text)}」を削除します。消さずに灰色で残り、点数には入りません。`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}
@@ -210,7 +212,9 @@ export function IcebergScreen({ year, viewOnly = false }) {
           ) : (
             <ul className="plain">
               {data.achieved.map((g) => (
-                <li key={g.id}>{g.text}</li>
+                <li key={g.id}>
+                  <Rich text={g.text} />
+                </li>
               ))}
             </ul>
           )}

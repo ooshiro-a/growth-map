@@ -4,11 +4,13 @@ import { HistorySheet } from '../components/HistorySheet.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
+import { Rich } from '../components/Rich.jsx';
 import { now } from '../lib/clock.js';
 import { jstParts } from '../lib/dates.js';
 import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
 import { ROOT_ID, deepIds, lifeTree, toOutline } from '../lib/lifemap.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, OP } from '../lib/schema.js';
 
 const M = KIND.MAP;
@@ -39,21 +41,21 @@ function Branch({ node, color, ui }) {
               ui.select(selected ? null : e.id);
             }}
           >
-            {e.text}
+            <Rich text={e.text} />
           </button>
           <div className="lm-pop" onClick={(ev) => ev.stopPropagation()}>
             <span className="date">
               {dateLine(e, { deleted })}
               {isPending(e) && <span className="pend">（未保存）</span>}
             </span>
-            <MoreMenu small items={ui.menuFor(node)} label={`「${e.text}」の操作`} />
+            <MoreMenu small items={ui.menuFor(node)} label={`「${plainText(e.text)}」の操作`} />
           </div>
         </div>
         {children.length > 0 && (
           <button
             type="button"
             className="lm-tg"
-            aria-label={collapsed ? `枝を開く（${children.length}）` : `枝をたたむ：${e.text}`}
+            aria-label={collapsed ? `枝を開く（${children.length}）` : `枝をたたむ：${plainText(e.text)}`}
             onClick={(ev) => {
               ev.stopPropagation();
               ui.toggle(e.id);
@@ -161,7 +163,7 @@ export function LifeMapScreen() {
   };
   const edit = (e, text) => put({ year: '', kind: M, id: e.id, op: OP.EDIT, text }, `「${text}」への修正`);
   const remove = (e) => {
-    const ok = put({ year: '', kind: M, id: e.id, op: OP.DELETE }, `「${e.text}」の削除`);
+    const ok = put({ year: '', kind: M, id: e.id, op: OP.DELETE }, `「${plainText(e.text)}」の削除`);
     if (ok) setSelected(null);
     return ok;
   };
@@ -297,15 +299,15 @@ export function LifeMapScreen() {
 
       {dialog?.type === 'edit' && <EditDialog title="文字を直す" initial={dialog.e.text} onClose={close} onSave={(t) => edit(dialog.e, t)} />}
       {dialog?.type === 'child' && (
-        <EditDialog title="枝を伸ばす" saveLabel="追加する" placeholder={`「${dialog.e.text}」の先に足す言葉`} onClose={close} onSave={(t) => addNode(dialog.e.id, t)} />
+        <EditDialog title="枝を伸ばす" saveLabel="追加する" placeholder={`「${plainText(dialog.e.text)}」の先に足す言葉`} onClose={close} onSave={(t) => addNode(dialog.e.id, t)} />
       )}
       {dialog?.type === 'sibling' && (
-        <EditDialog title="下に追加" saveLabel="追加する" placeholder={`「${dialog.e.text}」の下に並べる言葉`} onClose={close} onSave={(t) => addNode(dialog.e.parent, t, dialog.e.id)} />
+        <EditDialog title="下に追加" saveLabel="追加する" placeholder={`「${plainText(dialog.e.text)}」の下に並べる言葉`} onClose={close} onSave={(t) => addNode(dialog.e.parent, t, dialog.e.id)} />
       )}
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.e.text}」を削除します。消さずに灰色で残ります。${dialog.kids ? 'この先の枝もいっしょに灰色になります。' : ''}`}
+          message={`「${plainText(dialog.e.text)}」を削除します。消さずに灰色で残ります。${dialog.kids ? 'この先の枝もいっしょに灰色になります。' : ''}`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}
@@ -318,7 +320,7 @@ export function LifeMapScreen() {
           note={dialog.kids ? 'この先の枝もいっしょに消えます。' : ''}
           undoable
           onDone={(rows) => {
-            remember(rows, dialog.e.id, `「${dialog.e.text}」の完全な削除`);
+            remember(rows, dialog.e.id, `「${plainText(dialog.e.text)}」の完全な削除`);
             setSelected(null);
           }}
           onClose={close}

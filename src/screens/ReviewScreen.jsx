@@ -7,6 +7,7 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { Rich } from '../components/Rich.jsx';
 import { SORT_LABEL, SortList } from '../components/Sort.jsx';
 import { now } from '../lib/clock.js';
 import { newId } from '../lib/ids.js';
@@ -26,6 +27,7 @@ import {
   reviewEntry,
   reviewYears,
 } from '../lib/review.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, LAYER, OP, quarterLayer, reviewId } from '../lib/schema.js';
 
 const isPending = (e) => e.history.some((r) => r.pending);
@@ -57,7 +59,7 @@ function Judge({ goal, locked, onJudge }) {
     </button>
   );
   return (
-    <span className="judge" role="group" aria-label={`「${goal.text}」の答え合わせ`}>
+    <span className="judge" role="group" aria-label={`「${plainText(goal.text)}」の答え合わせ`}>
       {btn(OP.ACHIEVE, '達成', 'ach')}
       {btn(OP.MISS, '未達', 'miss')}
     </span>
@@ -176,7 +178,7 @@ export function GoalSection({
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.g.text}」を削除します。消さずに灰色で残り${toResult ? '、成果にも載りません' : 'ます'}。`}
+          message={`「${plainText(dialog.g.text)}」を削除します。消さずに灰色で残り${toResult ? '、成果にも載りません' : 'ます'}。`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.g)}
@@ -212,7 +214,9 @@ function TextSection({ num, title, year, layer, locked }) {
       </div>
       {text ? (
         <div className="box">
-          <div className="box-tx">{text}</div>
+          <div className="box-tx">
+            <Rich text={text} />
+          </div>
           <div className="box-date">
             {writtenLine(e)}
             {isPending(e) && <span className="pend">（未保存）</span>}

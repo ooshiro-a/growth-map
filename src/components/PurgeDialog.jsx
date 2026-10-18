@@ -1,5 +1,6 @@
 import { useApp } from '../app-context.js';
 import { purgeDrafts } from '../lib/purge.js';
+import { plainText } from '../lib/rich.js';
 import { ConfirmDialog } from './Modal.jsx';
 
 export const PURGE_LABEL = '完全に削除する';
@@ -13,7 +14,7 @@ export function PurgeDialog({ e, year = '', note = '', undoable = false, onDone,
   return (
     <ConfirmDialog
       title={PURGE_LABEL}
-      message={`「${e.text}」を画面から完全に消します。間違えて足した時のためのものです。${note}${tail}（シートの記録は残ります）`}
+      message={`「${plainText(e.text)}」を画面から完全に消します。間違えて足した時のためのものです。${note}${tail}（シートの記録は残ります）`}
       okLabel={PURGE_LABEL}
       warn
       onOk={() => {

@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useCanHover } from '../hooks.js';
+import { plainText } from '../lib/rich.js';
 import { MoreMenu } from './MoreMenu.jsx';
+import { Rich } from './Rich.jsx';
 
 // 1つの項目：文言＋「…」。押すと（PCはカーソルを合わせると）小さな灰色の日付が出る。もう一度押すと消える
 // 削除した項目は灰色で残る
+// 文言は **で囲んだ所を太字に（Rich）
 // lead：文言の前に出す小さな札（時期など）／sub：文言の下に出す補足（頻度・打ち手など）
 export function ItemRow({ text, date, deleted = false, pending = false, menu, aside = null, lead = null, sub = null, className = '' }) {
   const canHover = useCanHover();
@@ -22,10 +25,10 @@ export function ItemRow({ text, date, deleted = false, pending = false, menu, as
       <div className="row">
         <span className="tx">
           {lead && <span className="lead">{lead}</span>}
-          {text}
+          <Rich text={text} />
         </span>
         {aside}
-        {menu && <MoreMenu items={menu} label={`「${text}」の操作`} />}
+        {menu && <MoreMenu items={menu} label={`「${plainText(text)}」の操作`} />}
       </div>
       {sub && <div className="subline">{sub}</div>}
       <div className="date">

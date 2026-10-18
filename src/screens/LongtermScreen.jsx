@@ -10,6 +10,7 @@ import { newId } from '../lib/ids.js';
 import { dateLine } from '../lib/labels.js';
 import { orderMoves } from '../lib/order.js';
 import { ROADMAP_PARTS, childItems, roadmapItems } from '../lib/review.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, LAYER, OP } from '../lib/schema.js';
 
 const K = KIND.LONGTERM;
@@ -148,7 +149,7 @@ function Dialogs({ dialog, setDialog, lt }) {
     return (
       <ConfirmDialog
         title="削除する"
-        message={`「${e.text}」を削除します。消さずに灰色で残ります。${kids && `${kids}灰色になります。`}`}
+        message={`「${plainText(e.text)}」を削除します。消さずに灰色で残ります。${kids && `${kids}灰色になります。`}`}
         okLabel="削除する"
         warn
         onOk={() => lt.remove(e)}

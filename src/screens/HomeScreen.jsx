@@ -6,6 +6,7 @@ import { ItemRow } from '../components/ItemRow.jsx';
 import { ConfirmDialog, EditDialog, Modal } from '../components/Modal.jsx';
 import { PURGE_LABEL, PurgeDialog } from '../components/PurgeDialog.jsx';
 import { MoreMenu } from '../components/MoreMenu.jsx';
+import { Rich } from '../components/Rich.jsx';
 import { SORT_LABEL, SortList } from '../components/Sort.jsx';
 import { now } from '../lib/clock.js';
 import { icebergYear } from '../lib/iceberg.js';
@@ -13,6 +14,7 @@ import { newId } from '../lib/ids.js';
 import { canSortItems } from '../lib/order.js';
 import { dateLine } from '../lib/labels.js';
 import { QUARTER_MONTHS, currentQuarter, reviewSteps } from '../lib/review.js';
+import { plainText } from '../lib/rich.js';
 import { KIND, LAYER, OP, quarterLayer } from '../lib/schema.js';
 import { GoalSection } from './ReviewScreen.jsx';
 
@@ -65,7 +67,9 @@ function PickDialog({ year, onSave, onClose }) {
             return (
               <label key={w.id} className={`pick${done ? ' done' : ''}`}>
                 <input type="checkbox" checked={picked.includes(w.id)} disabled={done} onChange={() => toggle(w.id)} />
-                <span className="tx">{w.text}</span>
+                <span className="tx">
+                  <Rich text={w.text} />
+                </span>
                 {done && <small>入れ済み</small>}
               </label>
             );
@@ -153,7 +157,7 @@ function Principles({ year, locked }) {
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
-          message={`「${dialog.e.text}」を削除します。消さずに灰色で残ります。`}
+          message={`「${plainText(dialog.e.text)}」を削除します。消さずに灰色で残ります。`}
           okLabel="削除する"
           warn
           onOk={() => remove(dialog.e)}

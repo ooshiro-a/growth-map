@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { orderMoves } from '../lib/order.js';
+import { plainText } from '../lib/rich.js';
+import { Rich } from './Rich.jsx';
 
 // 並べ替えの共通部品：欄を ↑↓ の形にし、「保存する」で動いた項目の分だけ記録を足す。「やめる」は何も書かない
 // 灰色（削除した項目）は動かさない（削除より後の記録は姿を変えない決まり）
@@ -37,13 +39,13 @@ export function SortRow({ e, i, n, onMove, className = '' }) {
     <div className={`item sort-row ${className}`}>
       <span className="tx">
         {e.attrs?.when && <span className="lead">{e.attrs.when}</span>}
-        {e.text}
+        <Rich text={e.text} />
       </span>
       <span className="sort-btns">
-        <button type="button" className="sort-btn" aria-label={`「${e.text}」を上へ`} disabled={i === 0} onClick={() => onMove(i, -1)}>
+        <button type="button" className="sort-btn" aria-label={`「${plainText(e.text)}」を上へ`} disabled={i === 0} onClick={() => onMove(i, -1)}>
           ↑
         </button>
-        <button type="button" className="sort-btn" aria-label={`「${e.text}」を下へ`} disabled={i === n - 1} onClick={() => onMove(i, 1)}>
+        <button type="button" className="sort-btn" aria-label={`「${plainText(e.text)}」を下へ`} disabled={i === n - 1} onClick={() => onMove(i, 1)}>
           ↓
         </button>
       </span>
