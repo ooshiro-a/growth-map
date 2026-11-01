@@ -190,8 +190,10 @@ html, body { line-height: 1.6; }
 .home-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .home-cols > .list { background: none; border: none; padding: 0; border-radius: 0; }
 .home-cols .sec { padding-bottom: 4px; border-bottom: 3px solid var(--ai); }
-.home-cols .principles .sec { border-bottom-color: var(--gold); }
-.home-cols .principles .tx { font-weight: 700; }
+/* 指針は3列の上に横幅いっぱい。金の下線と太字（中期目標・今年・四半期は藍） */
+.home-cols .guides { grid-column: 1 / -1; }
+.home-cols .guides .sec { border-bottom-color: var(--gold); }
+.home-cols .guides .tx { font-weight: 700; }
 :root[data-theme='dark'] .home-cols .sec { border-bottom-color: var(--sub); }
 @media (max-width: 767px) {
   .home-hero { height: 180px; margin: -10px -16px 16px; }
@@ -244,11 +246,12 @@ html, body { line-height: 1.6; }
 /* 道のりの右上の文字：太陽に重ならないよう、いちばん新しい一歩は2行に分ける */
 .home-hero .hero-cap { text-align: right; }
 .home-hero .hero-cap b span { display: block; }
-/* ダークの下線：「端末に合わせる」でも同じに。指標は金のまま */
+/* ダークの下線：「端末に合わせる」でも同じに。指針は金のまま */
 @media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .sec { border-bottom-color: var(--sub); } }
-:root[data-theme='dark'] .home-cols .principles .sec { border-bottom-color: var(--gold); }
-@media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .principles .sec { border-bottom-color: var(--gold); } }
-/* ホーム（スマホ）：下のタブに隠れず1画面に収める。図を小さく（文字は図の上に1行）、項目は1行（押すと全文）、各欄3件まで（「ほか○件」で開く） */
+:root[data-theme='dark'] .home-cols .guides .sec { border-bottom-color: var(--gold); }
+@media (prefers-color-scheme: dark) { :root[data-theme='auto'] .home-cols .guides .sec { border-bottom-color: var(--gold); } }
+/* ホーム（スマホ）：下のタブに隠れず1画面に収める。図を小さく（文字は図の上に1行）、項目は1行（押すと全文）、
+   指針は3件・ほかの欄は2件まで（「ほか○件」で開く） */
 .cap-more { display: none; }
 @media (max-width: 767px) {
   .home-hero { height: 128px; margin: -10px -16px 12px; }

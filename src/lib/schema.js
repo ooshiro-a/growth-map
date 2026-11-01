@@ -20,7 +20,10 @@ export const SCHEMA_VERSION = 1;
 
 export const KIND = {
   GOAL: '目標',
-  PRINCIPLE: '指標',
+  // ホームの中期目標（2026年11月に「指標」から画面の名前を変えた。シートの値は「指標」のまま）
+  MIDTERM: '指標',
+  // ホームの指針（中期目標より上。年をまたぐ）
+  GUIDE: '指針',
   ICEBERG: 'アイスバーグ',
   BRAKE: 'ブレーキ',
   AXIS: '自分軸',

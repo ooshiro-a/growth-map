@@ -18,7 +18,7 @@ beforeEach(resetNo);
 
 describe('完全に削除する（組み立て）', () => {
   it('追加を打ち消すと、その項目は並びから消える（修正・削除の行があっても）', () => {
-    const P = KIND.PRINCIPLE;
+    const P = KIND.MIDTERM;
     const rows = [
       r({ no: 'rpadd1', kind: P, id: 'np1', op: OP.ADD, text: '作り物の指標1' }),
       r({ kind: P, id: 'np2', op: OP.ADD, text: '作り物の指標2' }),
@@ -94,16 +94,16 @@ const confirmPurge = () => {
 describe('完全に削除する（画面）', () => {
   it('灰色で残した項目も、「…」から完全に消せる', () => {
     const log = [];
-    const initial = [r({ no: 'rpadd3', kind: KIND.PRINCIPLE, id: 'np1', op: OP.ADD, text: '作り物の間違い' }), r({ kind: KIND.PRINCIPLE, id: 'np1', op: OP.DELETE })];
+    const initial = [r({ no: 'rpadd3', kind: KIND.MIDTERM, id: 'np1', op: OP.ADD, text: '作り物の間違い' }), r({ kind: KIND.MIDTERM, id: 'np1', op: OP.DELETE })];
     render(
       <Harness log={log} initial={initial}>
-        <ItemList kind={KIND.PRINCIPLE} title="指標" />
+        <ItemList kind={KIND.MIDTERM} title="中期目標" />
       </Harness>,
     );
     openMenu('「作り物の間違い」の操作');
     choose('完全に削除する');
     expect(confirmPurge()).toContain('元に戻せません');
-    expect(log).toEqual([{ year: '', kind: KIND.PRINCIPLE, id: 'np1', op: OP.UNDO, extra: { undo: 'rpadd3' } }]);
+    expect(log).toEqual([{ year: '', kind: KIND.MIDTERM, id: 'np1', op: OP.UNDO, extra: { undo: 'rpadd3' } }]);
     expect(screen.queryByText('作り物の間違い')).toBeNull();
     expect(screen.getByText('まだありません')).toBeTruthy();
   });

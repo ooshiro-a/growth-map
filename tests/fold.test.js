@@ -9,43 +9,43 @@ beforeEach(resetNo);
 
 describe('行の読み込み', () => {
   it('記録番号が同じ行は最初の1行だけ使う', () => {
-    const a = r({ no: 'rdup0001', kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一' });
-    const b = r({ no: 'rdup0001', kind: KIND.PRINCIPLE, id: 'na', op: OP.EDIT, text: '二' });
+    const a = r({ no: 'rdup0001', kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一' });
+    const b = r({ no: 'rdup0001', kind: KIND.MIDTERM, id: 'na', op: OP.EDIT, text: '二' });
     const m = buildModel([a, b], [], { currentYear: 2026 });
     expect(m.records).toHaveLength(1);
-    expect(m.flat(KIND.PRINCIPLE).entities.get('na').text).toBe('一');
+    expect(m.flat(KIND.MIDTERM).entities.get('na').text).toBe('一');
   });
 
   it('未保存の行も後ろに足して組み立てる（送った後に同じ番号が来ても1つ）', () => {
-    const a = r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一' });
-    const p = r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.EDIT, text: '二' });
+    const a = r({ kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一' });
+    const p = r({ kind: KIND.MIDTERM, id: 'na', op: OP.EDIT, text: '二' });
     const m = buildModel([a], [p], { currentYear: 2026 });
-    expect(m.flat(KIND.PRINCIPLE).entities.get('na').text).toBe('二');
+    expect(m.flat(KIND.MIDTERM).entities.get('na').text).toBe('二');
     expect(m.records[1].pending).toBe(true);
     const m2 = buildModel([a, p], [p], { currentYear: 2026 });
     expect(m2.records).toHaveLength(2);
   });
 
   it('知らない版の行があれば unsupported にし、その行は使わない', () => {
-    const a = r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一' });
-    const b = r({ ver: 2, kind: KIND.PRINCIPLE, id: 'na', op: OP.EDIT, text: '二' });
+    const a = r({ kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一' });
+    const b = r({ ver: 2, kind: KIND.MIDTERM, id: 'na', op: OP.EDIT, text: '二' });
     const m = buildModel([a, b], [], { currentYear: 2026 });
     expect(m.unsupported).toBe(true);
-    expect(m.flat(KIND.PRINCIPLE).entities.get('na').text).toBe('一');
+    expect(m.flat(KIND.MIDTERM).entities.get('na').text).toBe('一');
   });
 
   it('付記が壊れていても落ちない', () => {
-    const a = r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一', extra: '{壊れた' });
+    const a = r({ kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一', extra: '{壊れた' });
     const m = buildModel([a], [], { currentYear: 2026 });
-    expect(m.flat(KIND.PRINCIPLE).entities.get('na').text).toBe('一');
+    expect(m.flat(KIND.MIDTERM).entities.get('na').text).toBe('一');
   });
 
   it('知らない種類・操作は使わずに数える', () => {
     const a = r({ kind: '謎', id: 'na', op: OP.ADD, text: 'x' });
-    const b = r({ kind: KIND.PRINCIPLE, id: 'nb', op: '謎の操作', text: 'y' });
+    const b = r({ kind: KIND.MIDTERM, id: 'nb', op: '謎の操作', text: 'y' });
     const m = buildModel([a, b], [], { currentYear: 2026 });
     expect(m.unknown).toBe(2);
-    expect(m.flat(KIND.PRINCIPLE).entities.size).toBe(0);
+    expect(m.flat(KIND.MIDTERM).entities.size).toBe(0);
   });
 });
 
@@ -65,27 +65,27 @@ describe('1行は変わった所だけ', () => {
 
   it('同じ項目番号の2回目の追加は修正として扱う', () => {
     const rows = [
-      r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一' }),
-      r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '二' }),
+      r({ kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一' }),
+      r({ kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '二' }),
     ];
     const m = buildModel(rows, [], { currentYear: 2026 });
-    expect(m.flat(KIND.PRINCIPLE).entities.size).toBe(1);
-    expect(m.flat(KIND.PRINCIPLE).entities.get('na').text).toBe('二');
+    expect(m.flat(KIND.MIDTERM).entities.size).toBe(1);
+    expect(m.flat(KIND.MIDTERM).entities.get('na').text).toBe('二');
   });
 
   it('追加のない項目への行は使わない（決まった番号は除く）', () => {
-    const rows = [r({ kind: KIND.PRINCIPLE, id: 'nx', op: OP.EDIT, text: '孤児' })];
-    expect(buildModel(rows, [], { currentYear: 2026 }).flat(KIND.PRINCIPLE).entities.size).toBe(0);
+    const rows = [r({ kind: KIND.MIDTERM, id: 'nx', op: OP.EDIT, text: '孤児' })];
+    expect(buildModel(rows, [], { currentYear: 2026 }).flat(KIND.MIDTERM).entities.size).toBe(0);
   });
 
   it('削除より後の行は履歴にだけ残す', () => {
     const rows = [
-      r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一' }),
-      r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.DELETE }),
-      r({ kind: KIND.PRINCIPLE, id: 'na', op: OP.EDIT, text: '遅れて来た修正' }),
+      r({ kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一' }),
+      r({ kind: KIND.MIDTERM, id: 'na', op: OP.DELETE }),
+      r({ kind: KIND.MIDTERM, id: 'na', op: OP.EDIT, text: '遅れて来た修正' }),
     ];
     const m = buildModel(rows, [], { currentYear: 2026 });
-    const e = m.flat(KIND.PRINCIPLE).entities.get('na');
+    const e = m.flat(KIND.MIDTERM).entities.get('na');
     expect(e.text).toBe('一');
     expect(e.deletedRec).not.toBeNull();
     expect(e.history).toHaveLength(3);
@@ -105,10 +105,10 @@ describe('打ち消し', () => {
   });
 
   it('後の記録は打ち消せない', () => {
-    const u = r({ no: 'rundo010', kind: KIND.PRINCIPLE, id: 'na', op: OP.UNDO, extra: { undo: 'rundo011' } });
-    const add = r({ no: 'rundo011', kind: KIND.PRINCIPLE, id: 'na', op: OP.ADD, text: '一' });
+    const u = r({ no: 'rundo010', kind: KIND.MIDTERM, id: 'na', op: OP.UNDO, extra: { undo: 'rundo011' } });
+    const add = r({ no: 'rundo011', kind: KIND.MIDTERM, id: 'na', op: OP.ADD, text: '一' });
     const m = buildModel([u, add], [], { currentYear: 2026 });
-    expect(m.flat(KIND.PRINCIPLE).entities.get('na')).toBeTruthy();
+    expect(m.flat(KIND.MIDTERM).entities.get('na')).toBeTruthy();
   });
 
   it('追加を打ち消すと項目も子も出ない', () => {
@@ -126,7 +126,7 @@ describe('打ち消し', () => {
 });
 
 describe('並び順（付記.after）', () => {
-  const P = KIND.PRINCIPLE;
+  const P = KIND.MIDTERM;
   it('直前の兄弟の後ろに入り、同じ兄弟を指したら後の行が先に来る', () => {
     const rows = [
       r({ kind: P, id: 'na', op: OP.ADD, text: 'A' }),

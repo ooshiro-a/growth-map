@@ -291,7 +291,7 @@ export function buildModel(rows = [], pendingRows = [], { currentYear } = {}) {
   const years = [];
   if (minYear != null && lastYear != null) for (let y = minYear; y <= lastYear; y++) years.push(y);
 
-  // 年をまたぐ種類（目標・指標・振り返り・長期・マップ・仕組み）
+  // 年をまたぐ種類（目標・指針・指標＝中期目標・振り返り・長期・マップ・仕組み）
   const flatMemo = new Map();
   function flat(kind) {
     if (flatMemo.has(kind)) return flatMemo.get(kind);

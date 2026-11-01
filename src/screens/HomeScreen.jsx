@@ -18,20 +18,39 @@ import { plainText } from '../lib/rich.js';
 import { KIND, LAYER, OP, quarterLayer } from '../lib/schema.js';
 import { GoalSection } from './ReviewScreen.jsx';
 
-const K = KIND.PRINCIPLE;
 // スマホのホームで各欄に出す数（1画面に収める。超えた分は見出しの「ほか○件」で開く。PC は全部）
-export const HOME_LIMIT = 3;
+// 指針は3件、中期目標・今年の目標・今の四半期の目標は2件
+export const GUIDE_LIMIT = 3;
+export const HOME_LIMIT = 2;
 const isPending = (e) => e.history.some((r) => r.pending);
 
-// 指標（年をまたぐ）
-export const principlesOf = (model) => model.list(model.flat(K), 'L:');
+// 指針・中期目標（年をまたぐ1段の一覧）
+export const flatList = (model, kind) => model.list(model.flat(kind), 'L:');
+
+// 階層：指針＞中期目標＞今年の目標＞今の四半期の目標（ホームは上から、大きい方から並べる）
+const FLAT = {
+  [KIND.GUIDE]: {
+    label: '指針',
+    className: 'guides',
+    limit: GUIDE_LIMIT,
+    pick: true, // アイスバーグの「意識・想い・人生哲学」から選べる
+    empty: 'まだありません。人生で指針にしている言葉・考え方を、手で打つか、アイスバーグの「意識・想い・人生哲学」から選んで入れます（年をまたいで続きます）',
+  },
+  [KIND.MIDTERM]: {
+    label: '中期目標',
+    className: 'midterms',
+    limit: HOME_LIMIT,
+    pick: false,
+    empty: 'まだありません。数年かけて追いかける目標を入れます（年をまたいで続きます）',
+  },
+};
 
 // アイスバーグの「意識・想い・人生哲学」から選ぶ（その年の分・削除した言葉は出さない）
-// 指標に同じ言葉がある時は「入れ済み」で選べない
-function PickDialog({ year, onSave, onClose }) {
+// 同じ言葉がもう欄にある時は「入れ済み」で選べない
+function PickDialog({ kind, year, onSave, onClose }) {
   const { model } = useApp();
   const words = useMemo(() => icebergYear(model, year).layers[LAYER.MIND].filter((w) => !w.deletedRec), [model, year]);
-  const have = useMemo(() => new Set(principlesOf(model).filter((p) => !p.deletedRec).map((p) => p.text.trim())), [model]);
+  const have = useMemo(() => new Set(flatList(model, kind).filter((p) => !p.deletedRec).map((p) => p.text.trim())), [model, kind]);
   const [picked, setPicked] = useState([]);
   const toggle = (id) => setPicked((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.concat(id)));
   const save = () => {
@@ -57,7 +76,9 @@ function PickDialog({ year, onSave, onClose }) {
         </>
       }
     >
-      <p className="note">{year}年の「意識・想い・人生哲学」の言葉です。言葉を写すだけなので、後でアイスバーグ側を直しても指標は変わりません</p>
+      <p className="note">
+        {year}年の「意識・想い・人生哲学」の言葉です。言葉を写すだけなので、後でアイスバーグ側を直しても{FLAT[kind].label}は変わりません
+      </p>
       {words.length === 0 ? (
         <p className="note">この年のアイスバーグに「意識・想い・人生哲学」の言葉がありません</p>
       ) : (
@@ -80,13 +101,14 @@ function PickDialog({ year, onSave, onClose }) {
   );
 }
 
-// 指標の並び
-function Principles({ year, locked }) {
+// 指針・中期目標の欄
+function FlatSection({ kind, year, locked }) {
   const { model, write } = useApp();
-  const list = principlesOf(model);
+  const { label, className, limit, pick, empty } = FLAT[kind];
+  const list = flatList(model, kind);
   const [dialog, setDialog] = useState(null);
   const [sorting, setSorting] = useState(false);
-  const cap = useCap(list.length, HOME_LIMIT);
+  const cap = useCap(list.length, limit);
 
   const ok = (rows) => rows != null;
   // まとめて足す時は、前に足したものの後ろにつなげる（after がない時は末尾に順に並ぶ）
@@ -98,13 +120,13 @@ function Principles({ year, locked }) {
       if (prev !== undefined) extra.after = prev;
       if (source) extra.source = source;
       if (prev !== undefined) prev = id;
-      return { year: '', kind: K, id, op: OP.ADD, text, extra: Object.keys(extra).length ? extra : undefined };
+      return { year: '', kind, id, op: OP.ADD, text, extra: Object.keys(extra).length ? extra : undefined };
     });
     return ok(write(drafts));
   };
-  const edit = (e, text) => ok(write([{ year: '', kind: K, id: e.id, op: OP.EDIT, text }]));
-  const remove = (e) => ok(write([{ year: '', kind: K, id: e.id, op: OP.DELETE }]));
-  const move = (moves) => ok(write(moves.map(({ id, after }) => ({ year: '', kind: K, id, op: OP.MOVE, extra: { after } }))));
+  const edit = (e, text) => ok(write([{ year: '', kind, id: e.id, op: OP.EDIT, text }]));
+  const remove = (e) => ok(write([{ year: '', kind, id: e.id, op: OP.DELETE }]));
+  const move = (moves) => ok(write(moves.map(({ id, after }) => ({ year: '', kind, id, op: OP.MOVE, extra: { after } }))));
   const sortItem = !locked && canSortItems(list) ? { label: SORT_LABEL, onSelect: () => setSorting(true) } : null;
 
   const menuFor = (e) =>
@@ -123,37 +145,32 @@ function Principles({ year, locked }) {
           { label: '履歴を見る', onSelect: () => setDialog({ type: 'hist', e }) },
           { label: PURGE_LABEL, warn: true, onSelect: () => setDialog({ type: 'purge', e }) },
         ];
+  const sectionMenu = pick
+    ? [
+        { label: '手で打って追加', onSelect: () => setDialog({ type: 'add' }) },
+        { label: 'アイスバーグから選ぶ', onSelect: () => setDialog({ type: 'pick' }) },
+        sortItem,
+      ]
+    : [{ label: '追加する', onSelect: () => setDialog({ type: 'add' }) }, sortItem];
   const close = () => setDialog(null);
-  if (sorting && !locked) return <SortList className="principles" label="指標" items={list} onSave={move} onDone={() => setSorting(false)} />;
+  if (sorting && !locked) return <SortList className={className} label={label} items={list} onSave={move} onDone={() => setSorting(false)} />;
 
   return (
-    <section className={`list principles${cap.cls}`}>
+    <section className={`list ${className}${cap.cls}`}>
       <div className="sec">
-        <span>指標</span>
+        <span>{label}</span>
         {cap.button}
-        {!locked && (
-          <MoreMenu
-            small
-            label="指標の操作"
-            items={[
-              { label: '手で打って追加', onSelect: () => setDialog({ type: 'add' }) },
-              { label: 'アイスバーグから選ぶ', onSelect: () => setDialog({ type: 'pick' }) },
-              sortItem,
-            ]}
-          />
-        )}
+        {!locked && <MoreMenu small label={`${label}の操作`} items={sectionMenu} />}
       </div>
       {/* 説明はまだ無い時だけ（ホームを1画面に収める） */}
-      {list.length === 0 && (
-        <p className="note">まだありません。見たい言葉だけを、手で打つか、アイスバーグの「意識・想い・人生哲学」から選んで入れます（年をまたいで続きます）</p>
-      )}
+      {list.length === 0 && <p className="note">{empty}</p>}
       {list.map((e, i) => (
         <ItemRow key={e.id} className={cap.over(i)} text={e.text} date={dateLine(e)} deleted={!!e.deletedRec} pending={isPending(e)} menu={menuFor(e)} />
       ))}
 
-      {dialog?.type === 'add' && <EditDialog title="指標を追加" saveLabel="追加する" onClose={close} onSave={(t) => add([t], dialog.after)} />}
-      {dialog?.type === 'pick' && <PickDialog year={year} onClose={close} onSave={(texts) => add(texts, undefined, 'iceberg')} />}
-      {dialog?.type === 'edit' && <EditDialog title="指標を編集" initial={dialog.e.text} onClose={close} onSave={(t) => edit(dialog.e, t)} />}
+      {dialog?.type === 'add' && <EditDialog title={`${label}を追加`} saveLabel="追加する" onClose={close} onSave={(t) => add([t], dialog.after)} />}
+      {dialog?.type === 'pick' && <PickDialog kind={kind} year={year} onClose={close} onSave={(texts) => add(texts, undefined, 'iceberg')} />}
+      {dialog?.type === 'edit' && <EditDialog title={`${label}を編集`} initial={dialog.e.text} onClose={close} onSave={(t) => edit(dialog.e, t)} />}
       {dialog?.type === 'del' && (
         <ConfirmDialog
           title="削除する"
@@ -165,7 +182,7 @@ function Principles({ year, locked }) {
         />
       )}
       {dialog?.type === 'purge' && <PurgeDialog e={dialog.e} onClose={close} />}
-      {dialog?.type === 'hist' && <HistorySheet kind={K} id={dialog.e.id} title={dialog.e.text} onClose={close} />}
+      {dialog?.type === 'hist' && <HistorySheet kind={kind} id={dialog.e.id} title={dialog.e.text} onClose={close} />}
     </section>
   );
 }
@@ -224,7 +241,8 @@ function HomeHero() {
   );
 }
 
-// ホーム（最初の画面）：上部の道のり、指標・今年の目標・今の四半期の目標（PC は3列）
+// ホーム（最初の画面）：上部の道のり、指針（PC は横幅いっぱい）、中期目標・今年の目標・今の四半期の目標（PC は3列）
+// スマホは1列で、この順に上から
 export function HomeScreen() {
   const { readOnly, year, quarter } = useApp();
   // 今の四半期は App が見張っている（開いたまま四半期をまたいでも描き直す）。無い時（試験など）はその場で求める
@@ -235,7 +253,8 @@ export function HomeScreen() {
     <div className="home-screen">
       <HomeHero />
       <div className="home-cols">
-        <Principles year={year} locked={readOnly} />
+        <FlatSection kind={KIND.GUIDE} year={year} locked={readOnly} />
+        <FlatSection kind={KIND.MIDTERM} year={year} locked={readOnly} />
         <GoalSection
           title="今年の目標"
           goalYear={year}

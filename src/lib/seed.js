@@ -60,7 +60,7 @@ export function validateSeed(s) {
   if (!Number.isInteger(s.year) || s.year < 2000 || s.year > 2100) err('year は 2026 のような年の数にしてください');
 
   list('goals', '今年の目標').forEach((t, i) => text(t, `今年の目標 ${i + 1}番目`));
-  list('principles', '指標').forEach((t, i) => text(t, `指標 ${i + 1}番目`));
+  list('principles', '中期目標').forEach((t, i) => text(t, `中期目標 ${i + 1}番目`));
   list('axis', '自分軸・理念').forEach((t, i) => text(t, `自分軸・理念 ${i + 1}番目`));
 
   list('iceberg', 'アイスバーグ').forEach((w, i) => {
@@ -117,7 +117,7 @@ export function seedDrafts(seed, makeId = newId) {
   const out = [];
   const add = (d) => out.push({ op: OP.ADD, id: makeId(), extra: src, ...d });
   (seed.goals || []).forEach((t) => add({ year, kind: KIND.GOAL, text: t.trim() }));
-  (seed.principles || []).forEach((t) => add({ year: '', kind: KIND.PRINCIPLE, text: t.trim() }));
+  (seed.principles || []).forEach((t) => add({ year: '', kind: KIND.MIDTERM, text: t.trim() }));
   (seed.iceberg || []).forEach((w) =>
     add({ year, kind: KIND.ICEBERG, layer: w.layer, text: w.text.trim(), value: w.layer === LAYER.MINUS ? '' : String(w.stage) }),
   );
@@ -150,7 +150,7 @@ export function seedSummary(seed) {
   return [
     ['年', `${seed.year}年`],
     ['今年の目標', `${(seed.goals || []).length}件`],
-    ['指標', `${(seed.principles || []).length}件`],
+    ['中期目標', `${(seed.principles || []).length}件`],
     [
       'アイスバーグ',
       `${ice.length}語（能力・スキル${byLayer(LAYER.SKILL)}・プラス${byLayer(LAYER.PLUS)}・マイナス${byLayer(LAYER.MINUS)}・意識${byLayer(LAYER.MIND)}）`,
@@ -173,7 +173,7 @@ export function seedSamples(seed, n = 2) {
   const motives = seed.motives || {};
   return [
     ['今年の目標', pick(seed.goals)],
-    ['指標', pick(seed.principles)],
+    ['中期目標', pick(seed.principles)],
     ['アイスバーグ', pick(seed.iceberg)],
     ['自分軸・理念', pick(seed.axis)],
     ['動機', pick(MOTIVE_QUADRANTS.flatMap((q) => (motives[q] && motives[q].items) || []))],

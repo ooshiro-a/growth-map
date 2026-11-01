@@ -224,7 +224,7 @@ export function AccelScreen({ year, viewOnly = false }) {
           <span>{AXIS_NAME}</span>
           {!locked && <MoreMenu small label={`${AXIS_NAME}の操作`} items={[{ label: '追加する', onSelect: () => setDialog({ type: 'add', kind: AX }) }]} />}
         </div>
-        <p className="note">大切な言葉・価値観。ホームの「指標」とは別に持ちます</p>
+        <p className="note">大切な言葉・価値観。ホームの「指針」とは別に持ちます</p>
         {axis.length === 0 && <p className="note">まだありません</p>}
         {axis.map(row)}
       </section>
