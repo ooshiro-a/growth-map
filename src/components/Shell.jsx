@@ -27,6 +27,66 @@ export const SUBTABS = {
   ],
 };
 
+// 左の帯（PC）の親項目の頭に付ける線画（外部の部品は使わない。飾りなので読み上げない）
+const ICONS = {
+  home: (
+    <>
+      <path d="M3 11l9-8 9 8" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-6h4v6" />
+    </>
+  ),
+  map: (
+    <>
+      <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
+      <path d="M9 4v14M15 6v14" />
+    </>
+  ),
+  review: (
+    <>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3" />
+      <path d="M3 4v5h5" />
+      <path d="M12 8v4l3 2" />
+    </>
+  ),
+  plan: (
+    <>
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-2.5 4 2.5 4H5" />
+    </>
+  ),
+  life: (
+    <>
+      <circle cx="5" cy="12" r="2" />
+      <path d="M7 12h10M10 12c1.5-6 3-6 7-6M10 12c1.5 6 3 6 7 6" />
+      <circle cx="19" cy="6" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+      <circle cx="19" cy="18" r="1.6" />
+    </>
+  ),
+  timeline: (
+    <>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M8 3v4M16 3v4" />
+    </>
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="6.5" />
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
+    </>
+  ),
+};
+
+function SideIcon({ name }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {ICONS[name]}
+    </svg>
+  );
+}
+
 // 右上は短く（詳しい文は title と設定の画面に出す）
 const SHORT_ERROR = {
   locked: '止めています',
@@ -81,6 +141,7 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
         {TABS.map((t) => (
           <div key={t.key}>
             <button type="button" className={`side-item${tab === t.key && !SUBTABS[t.key] ? ' on' : ''}`} onClick={() => go(t.path)}>
+              <SideIcon name={t.key} />
               {t.label}
             </button>
             {SUBTABS[t.key]?.map((s) => (
@@ -96,6 +157,7 @@ export function Shell({ tab, sub, title, go, actions = null, children }) {
           </div>
         ))}
         <button type="button" className={`side-item gear${tab === 'settings' ? ' on' : ''}`} onClick={() => go('settings')}>
+          <SideIcon name="settings" />
           設定
         </button>
       </aside>
